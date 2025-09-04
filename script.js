@@ -4858,4 +4858,195 @@ window.findByText = window.findByText || function (root, text, {selector='*', ex
     }
   });
 })();
+/* =========================
+   GROOVEMATCH — DEPLOY PATCH
+   Paste LAST in script.js
+========================= */
+(function GM_DEPLOY_FIXES(){
+  // ---------- Safe toast ----------
+  (function(){
+    if (window.toast) return;
+    const host = document.createElement('div');
+    host.className = 'gm-toast-host';
+    Object.assign(host.style, {position:'fixed',right:'16px',bottom:'16px',zIndex:99999});
+    document.body.appendChild(host);
+    window.toast = function(msg, type='ok', ms=2200){
+      const el = document.createElement('div');
+      el.className = `gm-toast ${type}`;
+      Object.assign(el.style, {
+        marginTop:'8px', padding:'10px 14px', borderRadius:'10px',
+        background: type==='err' ? '#ffdddd' : '#ddffdd',
+        boxShadow:'0 6px 20px rgba(0,0,0,.15)', font:'14px/1.3 system-ui',
+      });
+      el.textContent = msg;
+      host.appendChild(el);
+      setTimeout(()=> el.remove(), ms);
+    };
+  })();
+
+  // ---------- Helpers ----------
+  const byId = (id)=> document.getElementById(id);
+  const q    = (sel,root=document)=> root.querySelector(sel);
+  const qa   = (sel,root=document)=> Array.from(root.querySelectorAll(sel));
+
+  function gridSig(){ return (byId('sig')?.value || '4/4').trim(); }
+  function gridTempo(){ return (byId('tempo')?.value || '100').toString().trim(); }
+
+  // Prefer app's own navigation if present; else fall back to hash or a page switcher
+  function goHome(){
+    if (typeof window.goTo === 'function') return window.goTo('page-builder');
+    if (typeof window.showPage === 'function') return window.showPage('page-builder');
+    if (byId('page-builder')) {
+      // naive SPA switch
+      qa('[id^="page-"]').forEach(p=> p.style.display = (p.id === 'page-builder' ? '' : 'none'));
+    }
+    location.hash = '#page-builder';
+  }
+
+  function isAuthed(){
+    try {
+      const u = localStorage.getItem('gm_user');
+      return !!u && u !== 'null' && u !== 'undefined';
+    } catch { return false; }
+  }
+
+  // ---------- Modal open/close (delegated; idempotent) ----------
+  if (!window.__gmModalWired){
+    window.__gmModalWired = true;
+
+    window.openModal = window.openModal || function(elOrId){
+      const el = typeof elOrId === 'string' ? byId(elOrId) : elOrId;
+      if (!el) return;
+      el.classList.add('show'); el.removeAttribute('aria-hidden');
+    };
+    window.closeModal = window.closeModal || function(elOrId){
+      const el = typeof elOrId === 'string' ? byId(elOrId) : elOrId;
+      if (!el) return;
+      el.classList.remove('show'); el.setAttribute('aria-hidden','true');
+    };
+
+    document.addEventListener('click', (e)=>{
+      const openTrig = e.target.closest('[data-modal-open]');
+      if (openTrig){
+        const id = openTrig.getAttribute('data-modal-open');
+        if (id) {
+          // Mirror grid defaults *before* opening
+          const sig = gridSig(), bpm = gridTempo();
+          const sigOut = byId('currentSigShow') || q('#submitModal [data-current-sig]');
+          const bpmOut = byId('currentTempoShow') || q('#submitModal [data-current-tempo]');
+          if (sigOut) sigOut.value = sig;
+          if (bpmOut) bpmOut.value = bpm;
+          openModal(id);
+        }
+      }
+      const closeTrig = e.target.closest('[data-modal-close], .modal .x, .modal .backdrop');
+      if (closeTrig){
+        const modal = closeTrig.closest('.modal');
+        if (modal) closeModal(modal);
+      }
+    }, {passive:true});
+    document.addEventListener('keydown', (e)=>{
+      if (e.key === 'Escape'){
+        const top = q('.modal.show');
+        if (top) closeModal(top);
+      }
+    });
+  }
+
+  // ---------- Song vs Pattern toggle inside Submit modal ----------
+  (function bindSubmitKind(){
+    if (window.__gmKindWired) return; window.__gmKindWired = true;
+
+    function applyKind(kind){
+      const modal = byId('submitModal') || document;
+      const rowPattern = byId('rowPatternName') || q('[data-row="pattern-name"]', modal);
+      const rowSong    = byId('rowSongFields')  || q('[data-row="song-fields"]', modal);
+      if (rowPattern) rowPattern.style.display = (kind === 'pattern' ? '' : 'none');
+      if (rowSong)    rowSong.style.display    = (kind === 'song' ? '' : 'none');
+      // Optional: label swap for the “optional name”
+      const opt = byId('patternNameOptional') || q('[data-input="pattern-name"]', modal);
+      if (opt) opt.placeholder = (kind === 'pattern' ? 'Pattern name (optional)' : '—');
+    }
+
+    function currentKind(){
+      const modal = byId('submitModal') || document;
+      const radios = qa('input[name="submissionType"]', modal);
+      const checked = radios.find(r=> r.checked);
+      const viaData = q('[data-submit-kind].active', modal)?.getAttribute('data-submit-kind');
+      return (checked?.value || viaData || 'song');
+    }
+
+    // react to changes
+    document.addEventListener('change', (e)=>{
+      const t = e.target;
+      if (t.matches('input[name="submissionType"]')){
+        applyKind(t.value === 'pattern' ? 'pattern' : 'song');
+      }
+    });
+    // also handle button-style toggles
+    document.addEventListener('click', (e)=>{
+      const btn = e.target.closest('[data-submit-kind]');
+      if (!btn) return;
+      qa('[data-submit-kind]').forEach(b=> b.classList.toggle('active', b === btn));
+      applyKind(btn.getAttribute('data-submit-kind') === 'pattern' ? 'pattern' : 'song');
+    });
+
+    // initialize once when modal is present
+    const init = ()=> applyKind(currentKind());
+    if (byId('submitModal')) init(); else document.addEventListener('DOMContentLoaded', init, {once:true});
+  })();
+
+  // ---------- Route guard: kick to page-builder with toast when logged out ----------
+  (function guardNav(){
+    if (window.__gmGuardWired) return; window.__gmGuardWired = true;
+
+    const homeId = 'page-builder';
+
+    function shouldGuard(route){
+      if (!route || route === homeId) return false;
+      return !isAuthed();
+    }
+
+    // Handle clicks on tabs/links like: <a data-nav="account">Account</a>
+    document.addEventListener('click', (e)=>{
+      const tab = e.target.closest('[data-nav]');
+      if (!tab) return;
+      const route = tab.getAttribute('data-nav');
+      if (shouldGuard(route)){
+        e.preventDefault();
+        toast('Please log in to access that tab.', 'err');
+        goHome();
+      }
+    }, {capture:true}); // capture true to intercept early
+
+    // Handle hash/manual changes
+    window.addEventListener('hashchange', ()=>{
+      const hash = location.hash.replace('#','').trim();
+      if (shouldGuard(hash)){
+        toast('Please log in to access that tab.', 'err');
+        goHome();
+      }
+    });
+  })();
+
+  // ---------- Keep submit defaults fresh even if user changes grid while modal is open ----------
+  (function mirrorGridIntoModalLive(){
+    if (window.__gmMirrorLive) return; window.__gmMirrorLive = true;
+    const update = ()=>{
+      const sigOut = byId('currentSigShow') || q('#submitModal [data-current-sig]');
+      const bpmOut = byId('currentTempoShow') || q('#submitModal [data-current-tempo]');
+      if (sigOut) sigOut.value = gridSig();
+      if (bpmOut) bpmOut.value = gridTempo();
+    };
+    // when grid inputs change
+    ['change','input'].forEach(evt=>{
+      byId('sig')?.addEventListener(evt, update);
+      byId('tempo')?.addEventListener(evt, update);
+    });
+    // also refresh when modal opens (defensive)
+    document.addEventListener('click', (e)=>{
+      if (e.target.closest('[data-modal-open="submitModal"]')) setTimeout(update, 0);
+    });
+  })();
+})();
 
