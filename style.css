@@ -1,529 +1,169 @@
-/* Submit modal: faded time sig + tempo pulled from grid */
-.muted-meta input[disabled]{
-  background:#f3f4f6;
-  color:#6b7280;
-  border:1px solid #e5e7eb;
-  cursor:not-allowed;
-}
-.muted-meta label{ opacity:.9; }
-
-/* --- Toast --- */
-.gm-toast-host{
-  position:fixed; right:16px; bottom:16px; z-index:99999;
-  display:flex; flex-direction:column; gap:8px; pointer-events:none;
-}
-.gm-toast{
-  pointer-events:auto;
-  min-width:220px; max-width:420px;
-  background:#111; color:#fff; border-radius:12px; padding:10px 12px;
-  box-shadow:0 10px 30px rgba(0,0,0,.25);
-  font:600 14px/1.3 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-  display:flex; align-items:center; gap:10px;
-  opacity:0; transform:translateY(8px);
-  transition:opacity .18s ease, transform .18s ease, filter .2s ease;
-}
-.gm-toast.info{ background:#2563eb; } 
-.gm-toast.ok{ background:#16a34a; }        /* green */
-.gm-toast.warn{ background:#f59e0b; }      /* orange */
-.gm-toast.danger{ background:#ef4444; }    /* red */
-.gm-toast.show{ opacity:1; transform:translateY(0); }
-.gm-toast .x{ margin-left:auto; background:transparent; border:0; color:inherit; font-weight:900; cursor:pointer; }
-
-/* Pending Grooves form fields */
-.form-grid label {
-  display:flex; flex-direction:column; gap:4px; font-size:14px; text-align:left;
-}
-.form-grid input, .form-grid select {
-  padding:8px 10px; border:1px solid #dcdcdc; border-radius:10px; font-size:14px;
-}
-/* Make the left Pending list panel independently scrollable */
-.admin-wrap{
-  display:grid;
-  grid-template-columns:320px 1fr;
-  gap:14px;
-  align-items:start;
-  /* give the whole admin area a viewport-tied height so inner scroll can work */
-  height: calc(100vh - 160px);   /* tweak 160px if your header is taller/shorter */
+/* ==================== GROOVEMATCH CLEANUP ==================== */
+/* Vars */
+:root{
+  --gm-blue: #026bc7;
+  --gm-blue-hov: #025aa6;
+  --gm-blue-act: #014e8f;
 }
 
-.admin-card{
-  background:var(--card);
-  border:1px solid #e6eaf2;
-  border-radius:14px;
-  box-shadow:var(--shadow);
-  padding:12px;
-  /* allow children to define their own overflow scroll */
-  display:flex;
-  flex-direction:column;
-  min-height:0; /* critical for inner overflow in grid/flex containers */
-}
+/* Toasts */
+.gm-toast.info { background: var(--gm-blue); border-color: var(--gm-blue); color:#fff; }
+.gm-toast.ok   { background: #16a34a;        border-color: #16a34a;       color:#fff; }
 
-/* Left card’s list area fills remaining height and scrolls */
-#adminList{
-  flex:1 1 auto;
-  overflow:auto;
-  min-height:0;
-  /* keep layout stable when scrollbar appears */
-  scrollbar-gutter: stable both-edges;
-  overscroll-behavior: contain;
-}
-
-/* Optional: style the scrollbar (WebKit/Chromium) */
-#adminList::-webkit-scrollbar{ width:10px; }
-#adminList::-webkit-scrollbar-thumb{
-  background:#cbd5e1; border-radius:8px; border:2px solid #fff;
-}
-#adminList::-webkit-scrollbar-track{ background:#f8fafc; border-radius:8px; }
-
-#page-account #acctDisplay{ font-weight:800; color:#111; }
-#page-account #acctEmail{ margin-top:2px; }
-
-#mySubs .admin-item .t{ font-weight:800; }
-#mySubs .admin-item .sub{ font-size:12px; color:#6b7280; }
-#mySubs .btn.small{ padding:8px 10px; }
-
-.mycat-toolbar{display:flex;align-items:center;justify-content:space-between;margin:6px 0 8px;gap:8px}
-.mycat-toolbar .chip{border:1px solid var(--muted,#999);padding:4px 8px;border-radius:999px;background:transparent;cursor:pointer}
-.mycat-toolbar .chip.active{border-color:currentColor;font-weight:600}
-
-.acct-sec { margin: 10px 0 14px; }
-.acct-sec-title { font-weight: 700; font-size: 0.95rem; margin-bottom: 6px; }
-.acct-avatar-row { display:flex; align-items:center; gap:12px; }
-#acctAvatar { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; background: #eee; border: 1px solid #ddd; }
-.acct-avatar-ctrls { display:flex; flex-direction:column; gap:4px; }
-.acct-actions { margin-top: 8px; }
-.hint { font-size: 0.8rem; opacity: 0.7; }
-
-.acct-summary{display:flex;align-items:center;gap:12px;margin:8px 0 10px}
-#acctAvatarMini{width:40px;height:40px;border-radius:50%;object-fit:cover;background:#eee;border:1px solid #ddd}
-.acct-lines{display:flex;flex-direction:column;line-height:1.2}
-.acct-name{font-weight:700}
-.acct-email{opacity:.8;font-size:.9rem}
-.acct-edit .acct-sec-title{font-weight:700;font-size:.95rem;margin:8px 0 6px}
-.acct-avatar-row{display:flex;align-items:center;gap:12px}
-#acctAvatar{width:72px;height:72px;border-radius:50%;object-fit:cover;background:#eee;border:1px solid #ddd}
-.acct-avatar-ctrls{display:flex;flex-direction:column;gap:4px}
-.acct-actions{margin-top:8px}
-.hint{font-size:.8rem;opacity:.7}
-
-/* My Account: hide legacy rows */
-#page-account #acctDisplay,
-#page-account #acctEmail,
-#page-account #acctRole { display: none !important; }
-
-/* My Submissions: remove toolbar button */
-.mycat-toolbar #toBuilder { display: none !important; }
-
-/* ==== BRAND BLUE OVERRIDE (#026bc7) ==== */
-
-/* Buttons (primary style) */
+/* Primary buttons (explicit) */
 .btn.primary,
 button.btn.primary,
-a.btn.primary {
-  background-color: #026bc7 !important;
-  border-color: #026bc7 !important;
+a.btn.primary{
+  background: var(--gm-blue);
+  border-color: var(--gm-blue);
+  color:#fff;
 }
 .btn.primary:hover,
 button.btn.primary:hover,
-a.btn.primary:hover {
-  background-color: #025aa6 !important; /* darker hover */
-  border-color: #025aa6 !important;
+a.btn.primary:hover{
+  background: var(--gm-blue-hov);
+  border-color: var(--gm-blue-hov);
 }
 
-/* Chips / filters */
-.chip.active,
-.mycat-toolbar .chip.active {
-  background-color: #026bc7 !important;
-  border-color: #026bc7 !important;
-  color: #fff !important;
-}
-
-/* Toasts (info/ok) */
-.gm-toast.info,
-.gm-toast.ok {
-  background-color: #026bc7 !important;
-  border-color: #026bc7 !important;
-  color: #fff !important;
-}
-.gm-toast.info .x,
-.gm-toast.ok .x {
-  color: #fff !important;
-}
-
-/* Links (if you used system blue for links) */
-a,
-a:visited {
-  color: #026bc7;
-}
-a:hover {
-  color: #025aa6;
-}
-/* ===== BRAND BLUE (#026bc7) — Play + Submit Groove (builder + admin) ===== */
-
-/* --- Builder Play (cover lots of likely hooks) --- */
-#play,
+/* Play buttons */
 #playBtn,
-#btnPlay,
-#builderPlay,
-button[data-action="play"],
-.btn.play, .play.btn,
-button.play {
-  background-color: #026bc7 !important;
-  border-color: #026bc7 !important;
-  color: #fff !important;
+#admPlay,
+button[data-action="play"]{
+  background: var(--gm-blue);
+  border-color: var(--gm-blue);
+  color:#fff;
 }
-#play:hover,
 #playBtn:hover,
-#btnPlay:hover,
-#builderPlay:hover,
-button[data-action="play"]:hover,
-.btn.play:hover, .play.btn:hover,
-button.play:hover {
-  background-color: #025aa6 !important;
-  border-color: #025aa6 !important;
+#admPlay:hover,
+button[data-action="play"]:hover{
+  background: var(--gm-blue-hov);
+  border-color: var(--gm-blue-hov);
+}
+#admPlay[aria-pressed="true"],
+#playBtn[aria-pressed="true"],
+button[data-action="play"][aria-pressed="true"]{
+  background: var(--gm-blue-act);
+  border-color: var(--gm-blue-act);
 }
 
-/* Outline-style play buttons (just in case) */
-#play.btn.outline,
-#playBtn.btn.outline,
-#btnPlay.btn.outline,
-#builderPlay.btn.outline,
-button[data-action="play"].btn.outline,
-.btn.play.outline, .play.btn.outline,
-button.play.btn.outline {
-  color: #026bc7 !important;
-  border-color: #026bc7 !important;
-  background: transparent !important;
-}
-#play.btn.outline:hover,
-#playBtn.btn.outline:hover,
-#btnPlay.btn.outline:hover,
-#builderPlay.btn.outline:hover,
-button[data-action="play"].btn.outline:hover,
-.btn.play.outline:hover, .play.btn.outline:hover,
-button.play.btn.outline:hover {
-  color: #fff !important;
-  background-color: #026bc7 !important;
-  border-color: #026bc7 !important;
-}
-
-/* If the play button has an icon, ensure it adopts text color */
-#play svg, #playBtn svg, #btnPlay svg, #builderPlay svg,
-button[data-action="play"] svg,
-.btn.play svg, .play.btn svg, button.play svg {
-  fill: currentColor !important;
-  stroke: currentColor !important;
-}
-
-/* --- Admin Play specifically (visible toggle state) --- */
-#admPlay {
-  background-color: #026bc7 !important;
-  border-color: #026bc7 !important;
-  color: #fff !important;
-}
-#admPlay:hover { background-color: #025aa6 !important; border-color: #025aa6 !important; }
-#admPlay[aria-pressed="true"] {
-  background-color: #025aa6 !important; /* active */
-  border-color: #025aa6 !important;
-}
-
-/* --- Submit Groove button --- */
+/* Submit Groove (explicit targets only) */
 #submitBtn,
-button#submitBtn,
-.btn#submitBtn,
-[data-role="submit-groove"],
-.btn.submit-groove,
-button.submit-groove {
-  background-color: #026bc7 !important;
-  border-color: #026bc7 !important;
-  color: #fff !important;
+button.submit-groove,
+[data-role="submit-groove"]{
+  background: var(--gm-blue);
+  border-color: var(--gm-blue);
+  color:#fff;
 }
 #submitBtn:hover,
-button#submitBtn:hover,
-.btn#submitBtn:hover,
-[data-role="submit-groove"]:hover,
-.btn.submit-groove:hover,
-button.submit-groove:hover {
-  background-color: #025aa6 !important;
-  border-color: #025aa6 !important;
+button.submit-groove:hover,
+[data-role="submit-groove"]:hover{
+  background: var(--gm-blue-hov);
+  border-color: var(--gm-blue-hov);
 }
 
-/* Outline-style submit (fallback) */
-#submitBtn.btn.outline,
-button#submitBtn.btn.outline,
-.btn#submitBtn.outline,
-[data-role="submit-groove"].btn.outline,
-.btn.submit-groove.outline,
-button.submit-groove.btn.outline {
-  color: #026bc7 !important;
-  border-color: #026bc7 !important;
-  background: transparent !important;
-}
-#submitBtn.btn.outline:hover,
-button#submitBtn.btn.outline:hover,
-.btn#submitBtn.outline:hover,
-[data-role="submit-groove"].btn.outline:hover,
-.btn.submit-groove.outline:hover,
-button.submit-groove.btn.outline:hover {
-  color: #fff !important;
-  background-color: #026bc7 !important;
-  border-color: #026bc7 !important;
-}
-:root{
-  --gm-blue: #026bc7;
-  --gm-blue-hov: #025aa6;   /* a hair darker */
-  --gm-blue-act: #014e8f;   /* pressed state */
-}
-
-/* 1) Attribute-targets used by your results renderer */
-#results [data-loadslug],
-#results [data-action="load"],
-#libraryResults [data-loadslug],
-#libraryResults [data-action="load"]{
-  background: var(--gm-blue) !important;
-  border-color: var(--gm-blue) !important;
-  color:#fff !important;
-}
-#results [data-loadslug]:hover,
-#results [data-action="load"]:hover,
-#libraryResults [data-loadslug]:hover,
-#libraryResults [data-action="load"]:hover{
-  background: var(--gm-blue-hov) !important;
-  border-color: var(--gm-blue-hov) !important;
-  color:#fff !important;
-}
-#results [data-loadslug]:active,
-#results [data-action="load"]:active,
-#libraryResults [data-loadslug]:active,
-#libraryResults [data-action="load"]:active{
-  background: var(--gm-blue-act) !important;
-  border-color: var(--gm-blue-act) !important;
-}
-
-/* 2) Library card actions — make the "primary" action blue.
-      If your markup doesn’t mark it, we assume the FIRST button is Load. */
+/* Library card primary action */
 .lib-actions .btn.primary,
 .lib-actions button.primary,
 .lib-actions a.btn.primary{
-  background: var(--gm-blue) !important;
-  border-color: var(--gm-blue) !important;
-  color:#fff !important;
+  background: var(--gm-blue);
+  border-color: var(--gm-blue);
+  color:#fff;
 }
 .lib-actions .btn.primary:hover,
 .lib-actions button.primary:hover,
 .lib-actions a.btn.primary:hover{
-  background: var(--gm-blue-hov) !important;
-  border-color: var(--gm-blue-hov) !important;
-}
-
-/* Fallback: if primary class isn’t present, color the FIRST action in each card */
-.lib-actions > .btn:first-child,
-.lib-actions > button:first-child,
-.lib-actions > a.btn:first-child{
-  background: var(--gm-blue) !important;
-  border-color: var(--gm-blue) !important;
-  color:#fff !important;
-}
-.lib-actions > .btn:first-child:hover,
-.lib-actions > button:first-child:hover,
-.lib-actions > a.btn:first-child:hover{
-  background: var(--gm-blue-hov) !important;
-  border-color: var(--gm-blue-hov) !important;
-}
-
-/* 3) Keep chips & secondary actions neutral */
-.lib-actions .btn.outline,
-.lib-actions button.outline,
-.lib-actions a.btn.outline{
-  background:#fff !important;
-  color: var(--gm-blue) !important;
-  border-color: var(--gm-blue) !important;
-}
-/* White default avatar background */
-#acctAvatar,
-#acctAvatarMini {
-  background-color: #fff;    /* white fill */
-  border-radius: 50%;        /* keep it circular */
-  object-fit: cover;         /* if a real image loads */
-}
-#acctAvatar[src=""],
-#acctAvatar:not([src]),
-#acctAvatarMini[src=""],
-#acctAvatarMini:not([src]) {
-  content: none;        /* kill broken image */
-  background-color: #fff;
-  border-radius: 50%;
-  border: 1px solid #ccc;  /* optional outline */
-  width: 60px;             /* same size as avatar */
-  height: 60px;
-  display: inline-block;
-}
-/* White empty circle when there is no src */
-#acctAvatarMini,
-#acctAvatar{
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  object-fit: cover;
-  background: #fff;                /* white fill */
-  border: 1px solid #dcdcdc;       /* subtle ring */
-  display: inline-block;
-}
-
-/* If the <img> has no src (or empty), hide the broken icon but keep our circle */
-#acctAvatarMini:not([src]),
-#acctAvatar:not([src]),
-#acctAvatarMini[src=""],
-#acctAvatar[src=""]{
-  background: #fff;                /* keep the white circle */
-  border: 1px solid #dcdcdc;
-}
-button:focus,
-.btn:focus,
-input:focus,
-select:focus,
-textarea:focus {
-  outline-color: #026bc7 !important;
-  box-shadow: 0 0 0 2px rgba(2,107,199,0.4) !important;
-}
-#logo:focus,
-.logo:focus {
-  outline: none !important;
-  box-shadow: none !important;
-}
-/* White avatar circle baseline */
-#acctAvatarMini, #acctAvatar {
-  background: #fff;
-  border: 1px solid #dcdcdc;
-  border-radius: 50%;
-  object-fit: cover;
-}
-/* Freeze nav button order so nothing reorders on refreshAuthUI */
-nav, header nav, .topbar .right, .nav { display:flex; }
-#navAccount { order: 0 !important; }   /* keep Account in its original slot */
-#navLogout  { order: 1 !important; }   /* or adjust these numbers to taste */
-
-/* === Account page buttons: use brand blue === */
-#page-account .btn:not(.outline):not(.secondary) {
-  background-color: var(--gm-blue);
-  border-color: var(--gm-blue);
-  color: #fff;
-}
-
-/* Hover/active states */
-#page-account .btn:not(.outline):not(.secondary):hover {
-  background-color: var(--gm-blue-hov);
+  background: var(--gm-blue-hov);
   border-color: var(--gm-blue-hov);
 }
-#page-account .btn:not(.outline):not(.secondary):active {
-  background-color: var(--gm-blue-act);
-  border-color: var(--gm-blue-act);
-}
 
-/* Outline variant adopts brand blue */
-#page-account .btn.outline {
-  background: #fff;
-  color: var(--gm-blue);
-  border-color: var(--gm-blue);
-}
-#page-account .btn.outline:hover {
-  background: var(--gm-blue);
-  color: #fff;
-  border-color: var(--gm-blue);
-}
-
-/* Make the selection checkboxes match the brand blue */
-#page-account .ms-check {
-  accent-color: var(--gm-blue);
-}
-/* subtle byline under card data */
-.gm-byline{
-  font-size: 12px;
-  opacity: .75;
-  margin-top: 4px;
-  line-height: 1.2;
-}
-
-/* tiny, muted username line under Sig/BPM */
-.gm-userline{
-  font-size: 12px;
-  opacity: .75;
-  margin-top: 6px;
-  line-height: 1.2;
-}
-/* === GROOVEMATCH BRAND BLUE — TIGHT SCOPED === */
-
-/* Keep success toast GREEN; only info is blue */
-.gm-toast.ok { background:#16a34a !important; border-color:#16a34a !important; }
-.gm-toast.info { background: var(--gm-blue) !important; border-color: var(--gm-blue) !important; color:#fff !important; }
-
-/* Play buttons only */
-#playBtn,
-#admPlay,
-button[data-action="play"] {
-  background: var(--gm-blue) !important;
-  border-color: var(--gm-blue) !important;
-  color:#fff !important;
-}
-#playBtn:hover,
-#admPlay:hover,
-button[data-action="play"]:hover {
-  background: var(--gm-blue-hov) !important;
-  border-color: var(--gm-blue-hov) !important;
-}
-#admPlay[aria-pressed="true"],
-#playBtn[aria-pressed="true"],
-button[data-action="play"][aria-pressed="true"] {
-  background: var(--gm-blue-act) !important;
-  border-color: var(--gm-blue-act) !important;
-}
-
-/* Submit Groove only */
-#submitBtn,
-button.submit-groove,
-[data-role="submit-groove"] {
-  background: var(--gm-blue) !important;
-  border-color: var(--gm-blue) !important;
-  color:#fff !important;
-}
-#submitBtn:hover,
-button.submit-groove:hover,
-[data-role="submit-groove"]:hover {
-  background: var(--gm-blue-hov) !important;
-  border-color: var(--gm-blue-hov) !important;
-}
-
-/* Library card primary action only */
-.lib-actions .btn.primary,
-.lib-actions button.primary,
-.lib-actions a.btn.primary {
-  background: var(--gm-blue) !important;
-  border-color: var(--gm-blue) !important;
-  color:#fff !important;
-}
-.lib-actions .btn.primary:hover,
-.lib-actions button.primary:hover,
-.lib-actions a.btn.primary:hover {
-  background: var(--gm-blue-hov) !important;
-  border-color: var(--gm-blue-hov) !important;
-}
-
-/* Chips keep brand only when active */
+/* Chips (only when active) */
 .mycat-toolbar .chip.active,
-.chip.active {
-  background: var(--gm-blue) !important;
-  border-color: var(--gm-blue) !important;
-  color:#fff !important;
+.chip.active{
+  background: var(--gm-blue);
+  border-color: var(--gm-blue);
+  color:#fff;
 }
 
-/* Keep outline/secondary styles neutral (undo any global blast) */
+/* Outline + secondary stay neutral */
 .btn.outline,
 button.btn.outline,
 a.btn.outline,
 .btn.secondary,
 button.btn.secondary,
-a.btn.secondary {
-  background:#fff !important;
-  color:inherit !important;
-  border-color:currentColor !important;
+a.btn.secondary{
+  background:#fff;
+  color:inherit;
+  border-color:currentColor;
 }
+
+/* Focus ring */
+button:focus,
+.btn:focus,
+input:focus,
+select:focus,
+textarea:focus{
+  outline-color: var(--gm-blue);
+  box-shadow: 0 0 0 2px rgba(2,107,199,0.4);
+}
+
+/* Avatars (single definition) */
+#acctAvatarMini, #acctAvatar{
+  width: 40px; height: 40px; /* override as needed on account page */
+  border-radius: 50%;
+  object-fit: cover;
+  background: #fff;
+  border: 1px solid #dcdcdc;
+}
+#acctAvatar{ width:72px; height:72px; } /* larger on account page */
+#acctAvatarMini:not([src]),
+#acctAvatar:not([src]),
+#acctAvatarMini[src=""],
+#acctAvatar[src=""]{
+  background:#fff;
+  border:1px solid #dcdcdc;
+}
+
+/* Results / Library “Load” buttons */
+#results [data-loadslug],
+#results [data-action="load"],
+#libraryResults [data-loadslug],
+#libraryResults [data-action="load"]{
+  background: var(--gm-blue);
+  border-color: var(--gm-blue);
+  color:#fff;
+}
+#results [data-loadslug]:hover,
+#results [data-action="load"]:hover,
+#libraryResults [data-loadslug]:hover,
+#libraryResults [data-action="load"]:hover{
+  background: var(--gm-blue-hov);
+  border-color: var(--gm-blue-hov);
+}
+
+/* Nav layout helper to pin auth right (used by JS ordering code) */
+.nav-spacer{ flex:1 1 auto; }
+
+/* Account page buttons */
+#page-account .btn:not(.outline):not(.secondary){
+  background: var(--gm-blue);
+  border-color: var(--gm-blue);
+  color:#fff;
+}
+#page-account .btn:not(.outline):not(.secondary):hover{
+  background: var(--gm-blue-hov);
+  border-color: var(--gm-blue-hov);
+}
+#page-account .btn.outline{
+  background:#fff;
+  color:var(--gm-blue);
+  border-color:var(--gm-blue);
+}
+#page-account .btn.outline:hover{
+  background:var(--gm-blue);
+  color:#fff;
+  border-color:var(--gm-blue);
+}
+#page-account .ms-check{ accent-color: var(--gm-blue); }
+
+/* Minor text bits */
+.gm-byline, .gm-userline{ font-size:12px; opacity:.75; line-height:1.2; }
