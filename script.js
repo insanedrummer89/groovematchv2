@@ -5884,6 +5884,7 @@ window.findByText = window.findByText || function (root, text, {selector='*', ex
     hookSearchPrune();
   }
 })();
+
 /* === BYLINE UNDER SIG/BPM (Library, Search, My Subs, Pending) === */
 (() => {
   if (window.__GM_BYLINE_UNDER_META__) return;
@@ -6002,32 +6003,38 @@ window.findByText = window.findByText || function (root, text, {selector='*', ex
   new MutationObserver(arm).observe(document.body, { childList:true, subtree:true });
 })();
 
-function findByText(selector, text, root){
-  const scope = root || document;
-  const needle = String(text||'').trim().toLowerCase();
-  for (const el of scope.querySelectorAll(selector)){
-    if ((el.textContent||'').trim().toLowerCase() === needle) return el;
-  }
-  return null;
-}
-function insertAfter(ref, node){ if(ref&&node) ref.parentNode.insertBefore(node, ref.nextSibling); }
-function isAdmin(){
-  const u = (typeof currentUser === 'function') ? currentUser() : null;
-  if (!u) return false;
-  const rec = (typeof findUser === 'function') ? findUser(u.email) : null;
-  return !!(rec && rec.role === 'admin');
-}
+
+
 function ensureNavOrder(){
-  const selectors = ['nav a','nav button','header a','header button','.topbar .btn'];
-  const get = txt => findByText(selectors.join(','), txt);
-  const pending = document.getElementById('toPending') || get('pending grooves');
-  const library = document.getElementById('toLibrary') || get('groove library') || get('library');
-  const acct    = document.getElementById('navAccount') || get('account') || get('my account');
-  const logout  = document.getElementById('navLogout')  || get('log out') || get('logout');
-  const anchor  = isAdmin() ? (pending||library) : (library||pending);
-  if (!anchor) return;
-  if (acct) insertAfter(anchor, acct);
-  if (logout) insertAfter(acct||anchor, logout);
+  const nav = document.querySelector('header nav, nav, .topbar .right');
+  if (!nav) return;
+  nav.style.display = 'flex';
+  nav.style.alignItems = 'center';
+
+  // Find the key buttons
+  const submit  = document.getElementById('toBuilder')   || document.querySelector('[data-nav="builder"]');
+  const library = document.getElementById('toLibrary')   || document.querySelector('[data-nav="library"]');
+  const pending = document.getElementById('toPending')   || document.querySelector('[data-nav="pending"]');
+  const acct    = document.getElementById('navAccount')  || document.querySelector('[data-nav="account"]');
+  const logout  = document.getElementById('navLogout')   || document.querySelector('[data-nav="logout"]');
+  const login   = document.getElementById('navLogin')    || document.querySelector('[data-nav="login"]');
+  const signup  = document.getElementById('navSignup')   || document.querySelector('[data-nav="signup"]');
+
+  // Clear out a spacer if one exists already
+  let spacer = nav.querySelector('.nav-spacer');
+  if (spacer) spacer.remove();
+
+  // Create a spacer that pushes following items to the right
+  spacer = document.createElement('div');
+  spacer.className = 'nav-spacer';
+  spacer.style.flex = '1 1 auto';
+
+  // Reorder: Submit | Library | (Pending) | spacer | Account/Log in | Logout/Sign up
+  [submit, library, pending].forEach(el => { if (el) nav.appendChild(el); });
+  nav.appendChild(spacer);
+  [acct || login, logout || signup].forEach(el => { if (el) nav.appendChild(el); });
 }
+
 document.addEventListener('DOMContentLoaded', ensureNavOrder);
-setTimeout(ensureNavOrder, 300);
+// Run again after any auth/UI refresh if needed
+setTimeout(ensureNavOrder, 500);
