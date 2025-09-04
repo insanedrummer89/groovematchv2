@@ -697,7 +697,7 @@ function loadGroove(g){
       const slug = newSlug(payload.title || 'pattern');
       appr.unshift({...payload, slug, approvedAt: Date.now()});
       setApproved(appr);
-      toast('Pattern added to Library!','ok');
+      toast('Thanks for the Sick Groove!','ok');
       closeModal(submitModal);
       openModal(thanksModal);
       renderLibrary();
