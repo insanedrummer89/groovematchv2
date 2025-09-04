@@ -6005,36 +6005,54 @@ window.findByText = window.findByText || function (root, text, {selector='*', ex
 
 
 
-function ensureNavOrder(){
-  const nav = document.querySelector('header nav, nav, .topbar .right');
+(function ensureRightAuthGroup(){
+  const nav = document.querySelector('header nav, .topbar nav, .topbar .right, nav');
   if (!nav) return;
   nav.style.display = 'flex';
   nav.style.alignItems = 'center';
 
-  // Find the key buttons
-  const submit  = document.getElementById('toBuilder')   || document.querySelector('[data-nav="builder"]');
-  const library = document.getElementById('toLibrary')   || document.querySelector('[data-nav="library"]');
-  const pending = document.getElementById('toPending')   || document.querySelector('[data-nav="pending"]');
-  const acct    = document.getElementById('navAccount')  || document.querySelector('[data-nav="account"]');
-  const logout  = document.getElementById('navLogout')   || document.querySelector('[data-nav="logout"]');
-  const login   = document.getElementById('navLogin')    || document.querySelector('[data-nav="login"]');
-  const signup  = document.getElementById('navSignup')   || document.querySelector('[data-nav="signup"]');
+  const pick = (id, altSel) =>
+    document.getElementById(id) || (altSel && nav.querySelector(altSel)) || null;
 
-  // Clear out a spacer if one exists already
-  let spacer = nav.querySelector('.nav-spacer');
-  if (spacer) spacer.remove();
+  function restyleOutline(el){
+    if (!el) return;
+    el.classList.add('btn','outline');     // make it match your pill look
+    el.style.marginLeft = '8px';
+  }
 
-  // Create a spacer that pushes following items to the right
-  spacer = document.createElement('div');
-  spacer.className = 'nav-spacer';
-  spacer.style.flex = '1 1 auto';
+  function order(){
+    const submit  = pick('toBuilder','[data-nav="builder"]');
+    const library = pick('toLibrary','[data-nav="library"]');
+    const pending = pick('toPending','[data-nav="pending"]');
 
-  // Reorder: Submit | Library | (Pending) | spacer | Account/Log in | Logout/Sign up
-  [submit, library, pending].forEach(el => { if (el) nav.appendChild(el); });
-  nav.appendChild(spacer);
-  [acct || login, logout || signup].forEach(el => { if (el) nav.appendChild(el); });
-}
+    // auth variants (logged-in vs logged-out)
+    const acct    = pick('navAccount','[data-nav="account"]');
+    const logout  = pick('navLogout','[data-nav="logout"]');
+    const login   = pick('navLogin','[data-nav="login"]');
+    const signup  = pick('navSignup','[data-nav="signup"]');
 
-document.addEventListener('DOMContentLoaded', ensureNavOrder);
-// Run again after any auth/UI refresh if needed
-setTimeout(ensureNavOrder, 500);
+    // LEFT side: Submit | Library | Pending
+    [submit, library, pending].forEach(el => { if (el) nav.appendChild(el); });
+
+    // Spacer pushes what follows to the far right
+    let spacer = nav.querySelector('.nav-spacer');
+    if (!spacer){
+      spacer = document.createElement('div');
+      spacer.className = 'nav-spacer';
+      spacer.style.flex = '1 1 auto';
+      nav.appendChild(spacer);
+    }
+
+    // RIGHT side: (Account or Log in) then (Log out or Sign up)
+    const right1 = acct || login;
+    const right2 = logout || signup;
+
+    if (right1){ restyleOutline(right1); nav.appendChild(right1); }
+    if (right2){ restyleOutline(right2); nav.appendChild(right2); }
+  }
+
+  order();
+  // If your auth UI re-renders later, keep it pinned right
+  new MutationObserver(order).observe(nav, { childList: true });
+  setTimeout(order, 300);
+})();
