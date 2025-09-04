@@ -719,20 +719,24 @@ function loadGroove(g){
     applyDeletionsToGrid(); addDeleteButtons();
   }
 
-  ;['libSearch','libType','libSig','libMin','libMax','libSort'].forEach(id=>{
-    const el = byId(id);
-    el?.addEventListener('input', renderLibrary);
-    el?.addEventListener('change', renderLibrary);
-  });
-  byId('libReset')?.addEventListener('click', ()=>{
-    byId('libSearch')?.value='';
-    byId('libType')?.value='song'; // keep Songs as default
-    byId('libSig')?.value='all';
-    byId('libMin')?.value='';
-    byId('libMax')?.value='';
-    byId('libSort')?.value='new';
-    renderLibrary();
-  });
+  byId('libReset')?.addEventListener('click', () => {
+  const s   = byId('libSearch');
+  const t   = byId('libType');
+  const sig = byId('libSig');
+  const min = byId('libMin');
+  const max = byId('libMax');
+  const sort= byId('libSort');
+
+  if (s)   s.value = '';
+  if (t)   t.value = 'song';   // keep Songs as default
+  if (sig) sig.value = 'all';
+  if (min) min.value = '';
+  if (max) max.value = '';
+  if (sort) sort.value = 'new';
+
+  renderLibrary();
+});
+
 
   // When navigating to Library, enforce the default to Songs once
   (function defaultLibraryOnOpen(){
