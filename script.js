@@ -6005,54 +6005,62 @@ window.findByText = window.findByText || function (root, text, {selector='*', ex
 
 
 
-(function ensureRightAuthGroup(){
-  const nav = document.querySelector('header nav, .topbar nav, .topbar .right, nav');
-  if (!nav) return;
-  nav.style.display = 'flex';
-  nav.style.alignItems = 'center';
-
-  const pick = (id, altSel) =>
-    document.getElementById(id) || (altSel && nav.querySelector(altSel)) || null;
-
-  function restyleOutline(el){
-    if (!el) return;
-    el.classList.add('btn','outline');     // make it match your pill look
-    el.style.marginLeft = '8px';
+(function pinAuthToRight(){
+  // 1) tiny helper to find by visible text if IDs aren’t present
+  function findByText(selector, text, root){
+    const scope = root || document, needle = String(text||'').trim().toLowerCase();
+    for (const el of scope.querySelectorAll(selector)){
+      if ((el.textContent||'').trim().toLowerCase() === needle) return el;
+    }
+    return null;
   }
 
-  function order(){
-    const submit  = pick('toBuilder','[data-nav="builder"]');
-    const library = pick('toLibrary','[data-nav="library"]');
-    const pending = pick('toPending','[data-nav="pending"]');
+  function apply(){
+    const nav = document.querySelector('header nav, .topbar nav, .topbar .right, nav');
+    if (!nav) return;
+    nav.style.display = 'flex';
+    nav.style.alignItems = 'center';
+    nav.style.flexWrap = 'nowrap';
 
-    // auth variants (logged-in vs logged-out)
-    const acct    = pick('navAccount','[data-nav="account"]');
-    const logout  = pick('navLogout','[data-nav="logout"]');
-    const login   = pick('navLogin','[data-nav="login"]');
-    const signup  = pick('navSignup','[data-nav="signup"]');
+    // Left group
+    const submit  = document.getElementById('toBuilder')  || findByText('a,button', 'submit groove', nav);
+    const library = document.getElementById('toLibrary')  || findByText('a,button', 'groove library', nav) || findByText('a,button','library',nav);
+    const pending = document.getElementById('toPending')  || findByText('a,button', 'pending grooves', nav);
 
-    // LEFT side: Submit | Library | Pending
-    [submit, library, pending].forEach(el => { if (el) nav.appendChild(el); });
+    // Right group (logged in vs out)
+    const acct    = document.getElementById('navAccount') || findByText('a,button', 'account', nav) || findByText('a,button','my account',nav);
+    const logout  = document.getElementById('navLogout')  || findByText('a,button', 'log out', nav) || findByText('a,button','logout',nav);
+    const login   = document.getElementById('navLogin')   || findByText('a,button', 'log in / sign up', nav) || findByText('a,button','log in',nav);
+    const signup  = document.getElementById('navSignup')  || findByText('a,button', 'sign up', nav);
 
-    // Spacer pushes what follows to the far right
-    let spacer = nav.querySelector('.nav-spacer');
-    if (!spacer){
-      spacer = document.createElement('div');
-      spacer.className = 'nav-spacer';
-      spacer.style.flex = '1 1 auto';
-      nav.appendChild(spacer);
-    }
+    // 2) Use flexbox ORDER instead of moving DOM (so nothing "fights" us)
+    const setOrder = (el, n) => { if (el) el.style.order = String(n); };
 
-    // RIGHT side: (Account or Log in) then (Log out or Sign up)
+    setOrder(submit,  10);
+    setOrder(library, 20);
+    setOrder(pending, 30);
+
+    // whichever exists first on the right gets margin-left:auto to push to edge
     const right1 = acct || login;
     const right2 = logout || signup;
 
-    if (right1){ restyleOutline(right1); nav.appendChild(right1); }
-    if (right2){ restyleOutline(right2); nav.appendChild(right2); }
+    if (right1){
+      right1.style.order = '100';
+      right1.style.marginLeft = 'auto';   // <-- pins everything after to the far right
+      // make it match your outline pills:
+      right1.classList.add('btn','outline');
+    }
+    if (right2){
+      right2.style.order = '110';
+      right2.classList.add('btn','outline');
+    }
   }
 
-  order();
-  // If your auth UI re-renders later, keep it pinned right
-  new MutationObserver(order).observe(nav, { childList: true });
-  setTimeout(order, 300);
+  // Run now and whenever nav re-renders
+  apply();
+  const nav = document.querySelector('header nav, .topbar nav, .topbar .right, nav');
+  if (nav){
+    new MutationObserver(apply).observe(nav, {childList:true, subtree:false});
+  }
+  setTimeout(apply, 300);
 })();
