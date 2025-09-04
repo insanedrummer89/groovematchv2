@@ -1,6 +1,4 @@
-/* ===== BEGIN LIVE BASE ===== */
-/*
-  GrooveMatch — Single-source clean build (v2025-09-04-4)
+   GooveMatch — Single-source clean build (v2025-09-04-4)
   -------------------------------------------------------
   • Consolidates all behaviors into one file (no duplicate listeners or functions)
   • Include ONCE via: <script type="module" src="/script.js?v=2025-09-04-4"></script>
