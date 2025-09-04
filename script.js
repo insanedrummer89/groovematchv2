@@ -1183,28 +1183,71 @@ document.addEventListener('DOMContentLoaded', renderAccount);
   syncTypeFields();
 })();
 
+  // Submit modal — keep Sig/BPM in sync with the grid
+(function submitMetaSync(){
+  const $ = sel => document.querySelector(sel);
+
   function fillMetaFromGrid(){
-    const sig = $('#sig')?.value || '4/4';
-    const bpm = $('#tempo')?.value || '100';
-    if($('#currentSigShow'))   $('#currentSigShow').value   = sig;
-    if($('#currentTempoShow')) $('#currentTempoShow').value = bpm + ' BPM';
+    const sigEl   = document.getElementById('sig');
+    const tempoEl = document.getElementById('tempo');
+
+    const sig = sigEl ? sigEl.value : '4/4';
+    const bpm = tempoEl ? tempoEl.value : '100';
+
+    const showSig  = document.getElementById('currentSigShow');
+    const showBpm  = document.getElementById('currentTempoShow');
+
+    if (showSig) showSig.value = sig;
+    if (showBpm) showBpm.value = `${bpm} BPM`;
   }
-  $('#submitBtn')?.addEventListener('click', ()=>{ fillMetaFromGrid(); syncTypeFields(); });
-  const submitModal = $('#submitModal');
-  if (submitModal){
-    new MutationObserver(()=>{
-      if (submitModal.getAttribute('aria-hidden') === 'false'){ fillMetaFromGrid(); syncTypeFields(); }
-    }).observe(submitModal, {attributes:true, attributeFilter:['aria-hidden']});
+
+  function safeSyncTypeFields(){
+    if (typeof window.syncTypeFields === 'function') {
+      window.syncTypeFields();
+    }
   }
+
+  // When clicking Submit, mirror fields + apply Pattern/Song toggle
+  const submitBtn = document.getElementById('submitBtn');
+  if (submitBtn && !submitBtn.__gmBound){
+    submitBtn.addEventListener('click', ()=>{
+      fillMetaFromGrid();
+      safeSyncTypeFields();
+    });
+    submitBtn.__gmBound = true;
+  }
+
+  // When modal opens, mirror again
+  const submitModal = document.getElementById('submitModal');
+  if (submitModal && !submitModal.__gmObs){
+    const obs = new MutationObserver(()=>{
+      if (submitModal.getAttribute('aria-hidden') === 'false'){
+        fillMetaFromGrid();
+        safeSyncTypeFields();
+      }
+    });
+    obs.observe(submitModal, { attributes:true, attributeFilter:['aria-hidden'] });
+    submitModal.__gmObs = true;
+  }
+
+  // If Sig/BPM change while modal is open, keep in sync
   ['sig','tempo'].forEach(id=>{
-    const el = document.getElementById(id); if (!el) return;
-    ['change','input'].forEach(evt=> el.addEventListener(evt, ()=>{
-      if($('#submitModal')?.getAttribute('aria-hidden') === 'false') fillMetaFromGrid();
-    }));
+    const el = document.getElementById(id);
+    if (!el) return;
+    ['change','input'].forEach(evt=>{
+      el.addEventListener(evt, ()=>{
+        const modal = document.getElementById('submitModal');
+        if (modal && modal.getAttribute('aria-hidden') === 'false'){
+          fillMetaFromGrid();
+        }
+      });
+    });
   });
-  $('#submitType')?.addEventListener('change', syncTypeFields);
-  syncTypeFields();
+
+  // Initial sync when script loads (harmless if modal is closed)
+  fillMetaFromGrid();
 })();
+
 
 /* ---------------- Submit: ensure Pattern Title UI (no hijack) ---------------- */
 (function ensurePatternTitleUI(){
