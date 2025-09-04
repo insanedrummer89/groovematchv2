@@ -2654,6 +2654,19 @@ window.showPage = function(id){
     '.tabs .btn, .tabs a, .tabs button',
     'a.btn, button.btn'
   ];
+  
+// --- Helper: find an element by its visible text ---
+function findByText(selector, text, root){
+  const scope  = root || document;
+  const needle = String(text || '').trim().toLowerCase();
+  if (!needle) return null;
+  const list = scope.querySelectorAll(selector);
+  for (const el of list) {
+    const t = (el.textContent || '').trim().toLowerCase();
+    if (t === needle) return el;
+  }
+  return null;
+}
 
   function getAccount(){
     // Prefer explicit id if you have one; fallback to text search
