@@ -451,3 +451,79 @@ nav, header nav, .topbar .right, .nav { display:flex; }
   margin-top: 6px;
   line-height: 1.2;
 }
+/* === GROOVEMATCH BRAND BLUE — TIGHT SCOPED === */
+
+/* Keep success toast GREEN; only info is blue */
+.gm-toast.ok { background:#16a34a !important; border-color:#16a34a !important; }
+.gm-toast.info { background: var(--gm-blue) !important; border-color: var(--gm-blue) !important; color:#fff !important; }
+
+/* Play buttons only */
+#playBtn,
+#admPlay,
+button[data-action="play"] {
+  background: var(--gm-blue) !important;
+  border-color: var(--gm-blue) !important;
+  color:#fff !important;
+}
+#playBtn:hover,
+#admPlay:hover,
+button[data-action="play"]:hover {
+  background: var(--gm-blue-hov) !important;
+  border-color: var(--gm-blue-hov) !important;
+}
+#admPlay[aria-pressed="true"],
+#playBtn[aria-pressed="true"],
+button[data-action="play"][aria-pressed="true"] {
+  background: var(--gm-blue-act) !important;
+  border-color: var(--gm-blue-act) !important;
+}
+
+/* Submit Groove only */
+#submitBtn,
+button.submit-groove,
+[data-role="submit-groove"] {
+  background: var(--gm-blue) !important;
+  border-color: var(--gm-blue) !important;
+  color:#fff !important;
+}
+#submitBtn:hover,
+button.submit-groove:hover,
+[data-role="submit-groove"]:hover {
+  background: var(--gm-blue-hov) !important;
+  border-color: var(--gm-blue-hov) !important;
+}
+
+/* Library card primary action only */
+.lib-actions .btn.primary,
+.lib-actions button.primary,
+.lib-actions a.btn.primary {
+  background: var(--gm-blue) !important;
+  border-color: var(--gm-blue) !important;
+  color:#fff !important;
+}
+.lib-actions .btn.primary:hover,
+.lib-actions button.primary:hover,
+.lib-actions a.btn.primary:hover {
+  background: var(--gm-blue-hov) !important;
+  border-color: var(--gm-blue-hov) !important;
+}
+
+/* Chips keep brand only when active */
+.mycat-toolbar .chip.active,
+.chip.active {
+  background: var(--gm-blue) !important;
+  border-color: var(--gm-blue) !important;
+  color:#fff !important;
+}
+
+/* Keep outline/secondary styles neutral (undo any global blast) */
+.btn.outline,
+button.btn.outline,
+a.btn.outline,
+.btn.secondary,
+button.btn.secondary,
+a.btn.secondary {
+  background:#fff !important;
+  color:inherit !important;
+  border-color:currentColor !important;
+}
