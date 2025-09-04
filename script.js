@@ -293,26 +293,42 @@ if (window.__GM_CLEAN_V4__) {
   const hatNoise = ()=> makeNoise(0.6);
   const snrNoise = ()=> makeNoise(0.3);
 
-  function playHat(open, tempo, sig, accent=false){
-    ensureAudio();
-    const t = ac.currentTime;
-    const n = ac.createBufferSource(); n.buffer = hatNoise();
-    const hp = ac.createBiquadFilter(); hp.type='highpass'; hp.frequency.value = open ? 6000 : (accent ? 7000 : 8000);
-assignDeepSafe(()=>(const subdiv = (TIME_SIGS[sig]), 'type', =='simple') ? 4 : 2);
-    const stepDur = (60/tempo)/subdiv;
-    const dur = open ? stepDur*1.9 : stepDur*0.6;
-    const g = ac.createGain();
-    let peak = 0.30;
-    if (open) peak = 0.75; else if (accent) peak = 0.99; else peak = 0.30;
-    const duck = window.__hhDuckScale; // optional duck from previous accent
-    if (duck && !open && !accent) peak = Math.max(0.1, peak * duck);
-    window.__hhDuckScale = null;
-    g.gain.setValueAtTime(0.001,t);
-    g.gain.linearRampToValueAtTime(Math.min(1.0,peak), t+0.005);
-    g.gain.exponentialRampToValueAtTime(0.001, t+dur);
-    n.connect(hp).connect(g).connect(ac.destination);
-    n.start(t); n.stop(t+dur+0.02);
-  }
+  function playHat(open, tempo, sig, accent = false){
+  ensureAudio();
+  const t = ac.currentTime;
+
+  const n = ac.createBufferSource();
+  n.buffer = hatNoise();
+
+  const hp = ac.createBiquadFilter();
+  hp.type = 'highpass';
+  hp.frequency.value = open ? 6000 : (accent ? 7000 : 8000);
+
+  // FIXED: compute subdiv normally (no assignDeepSafe nonsense)
+  const subdiv = (TIME_SIGS[sig]?.type === 'simple') ? 4 : 2;
+
+  const stepDur = (60 / tempo) / subdiv;
+  const dur = open ? stepDur * 1.9 : stepDur * 0.6;
+
+  const g = ac.createGain();
+  let peak = 0.30;
+  if (open) peak = 0.75;
+  else if (accent) peak = 0.99;
+  else peak = 0.30;
+
+  const duck = window.__hhDuckScale; // optional duck from previous accent
+  if (duck && !open && !accent) peak = Math.max(0.1, peak * duck);
+  window.__hhDuckScale = null;
+
+  g.gain.setValueAtTime(0.001, t);
+  g.gain.linearRampToValueAtTime(Math.min(1.0, peak), t + 0.005);
+  g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+
+  n.connect(hp).connect(g).connect(ac.destination);
+  n.start(t);
+  n.stop(t + dur + 0.02);
+}
+
   function playKick(v=1){ ensureAudio(); const t=ac.currentTime; const o=ac.createOscillator(), g=ac.createGain(); o.type='sine'; o.frequency.setValueAtTime(140,t); o.frequency.exponentialRampToValueAtTime(50,t+0.12); g.gain.setValueAtTime(0.001,t); g.gain.linearRampToValueAtTime(0.9*v,t+0.005); g.gain.exponentialRampToValueAtTime(0.001,t+0.22); o.connect(g).connect(ac.destination); o.start(t); o.stop(t+0.25); }
   function playSnare(v=1){ ensureAudio(); const t=ac.currentTime; const n=ac.createBufferSource(); n.buffer=snrNoise(); const f=ac.createBiquadFilter(); f.type='highpass'; f.frequency.value=1500; const g=ac.createGain(); g.gain.setValueAtTime(0.001,t); g.gain.linearRampToValueAtTime(0.7*v,t+0.002); g.gain.exponentialRampToValueAtTime(0.001,t+0.12); n.connect(f).connect(g).connect(ac.destination); n.start(t); n.stop(t+0.15); const o=ac.createOscillator(), og=ac.createGain(); o.type='sine'; o.frequency.setValueAtTime(190,t); og.gain.setValueAtTime(0.001,t); og.gain.linearRampToValueAtTime(0.4*v,t+0.001); og.gain.exponentialRampToValueAtTime(0.001,t+0.08); o.connect(og).connect(ac.destination); o.start(t); o.stop(t+0.1); }
 
