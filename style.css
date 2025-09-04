@@ -1,169 +1,99 @@
-/* ==================== GROOVEMATCH CLEANUP ==================== */
-/* Vars */
+/* ==================== GROOVEMATCH THEME — #6b7280 ==================== */
+/* Brand tokens */
 :root{
-  --gm-blue: #026bc7;
-  --gm-blue-hov: #025aa6;
-  --gm-blue-act: #014e8f;
+  --gm-blue:     #6b7280;  /* your color */
+  --gm-blue-hov: #5b6470;  /* hover (a hair darker) */
+  --gm-blue-act: #4b5563;  /* active/pressed (≈ gray-600) */
 }
+
+/* Links */
+a, a:visited{ color: var(--gm-blue); }
+a:hover{ color: var(--gm-blue-hov); }
 
 /* Toasts */
-.gm-toast.info { background: var(--gm-blue); border-color: var(--gm-blue); color:#fff; }
-.gm-toast.ok   { background: #16a34a;        border-color: #16a34a;       color:#fff; }
+.gm-toast.info{ background: var(--gm-blue) !important; border-color: var(--gm-blue) !important; color:#fff !important; }
+.gm-toast.ok  { background: #16a34a !important; border-color:#16a34a !important; color:#fff !important; }
 
-/* Primary buttons (explicit) */
-.btn.primary,
-button.btn.primary,
-a.btn.primary{
-  background: var(--gm-blue);
-  border-color: var(--gm-blue);
-  color:#fff;
+/* Primary buttons */
+.btn.primary, button.btn.primary, a.btn.primary{
+  background: var(--gm-blue) !important;
+  border-color: var(--gm-blue) !important;
+  color:#fff !important;
 }
-.btn.primary:hover,
-button.btn.primary:hover,
-a.btn.primary:hover{
-  background: var(--gm-blue-hov);
-  border-color: var(--gm-blue-hov);
+.btn.primary:hover, button.btn.primary:hover, a.btn.primary:hover{
+  background: var(--gm-blue-hov) !important; border-color: var(--gm-blue-hov) !important;
 }
 
-/* Play buttons */
-#playBtn,
-#admPlay,
-button[data-action="play"]{
-  background: var(--gm-blue);
-  border-color: var(--gm-blue);
-  color:#fff;
-}
-#playBtn:hover,
-#admPlay:hover,
-button[data-action="play"]:hover{
-  background: var(--gm-blue-hov);
-  border-color: var(--gm-blue-hov);
-}
-#admPlay[aria-pressed="true"],
-#playBtn[aria-pressed="true"],
-button[data-action="play"][aria-pressed="true"]{
-  background: var(--gm-blue-act);
-  border-color: var(--gm-blue-act);
+/* Outline / secondary remain neutral */
+.btn.outline, button.btn.outline, a.btn.outline,
+.btn.secondary, button.btn.secondary, a.btn.secondary{
+  background:#fff !important; color:inherit !important; border-color:currentColor !important;
 }
 
-/* Submit Groove (explicit targets only) */
-#submitBtn,
-button.submit-groove,
-[data-role="submit-groove"]{
-  background: var(--gm-blue);
-  border-color: var(--gm-blue);
-  color:#fff;
+/* Play controls */
+#playBtn, #admPlay, button[data-action="play"]{
+  background: var(--gm-blue) !important; border-color: var(--gm-blue) !important; color:#fff !important;
 }
-#submitBtn:hover,
-button.submit-groove:hover,
-[data-role="submit-groove"]:hover{
-  background: var(--gm-blue-hov);
-  border-color: var(--gm-blue-hov);
+#playBtn:hover, #admPlay:hover, button[data-action="play"]:hover{
+  background: var(--gm-blue-hov) !important; border-color: var(--gm-blue-hov) !important;
+}
+#playBtn[aria-pressed="true"], #admPlay[aria-pressed="true"], button[data-action="play"][aria-pressed="true"]{
+  background: var(--gm-blue-act) !important; border-color: var(--gm-blue-act) !important;
 }
 
-/* Library card primary action */
-.lib-actions .btn.primary,
-.lib-actions button.primary,
-.lib-actions a.btn.primary{
-  background: var(--gm-blue);
-  border-color: var(--gm-blue);
-  color:#fff;
+/* Submit Groove */
+#submitBtn, button.submit-groove, [data-role="submit-groove"]{
+  background: var(--gm-blue) !important; border-color: var(--gm-blue) !important; color:#fff !important;
 }
-.lib-actions .btn.primary:hover,
-.lib-actions button.primary:hover,
-.lib-actions a.btn.primary:hover{
-  background: var(--gm-blue-hov);
-  border-color: var(--gm-blue-hov);
+#submitBtn:hover, button.submit-groove:hover, [data-role="submit-groove"]:hover{
+  background: var(--gm-blue-hov) !important; border-color: var(--gm-blue-hov) !important;
 }
 
-/* Chips (only when active) */
-.mycat-toolbar .chip.active,
-.chip.active{
-  background: var(--gm-blue);
-  border-color: var(--gm-blue);
-  color:#fff;
+/* Library / results “Load” buttons */
+#results [data-loadslug], #results [data-action="load"],
+#libraryResults [data-loadslug], #libraryResults [data-action="load"]{
+  background: var(--gm-blue) !important; border-color: var(--gm-blue) !important; color:#fff !important;
+}
+#results [data-loadslug]:hover, #results [data-action="load"]:hover,
+#libraryResults [data-loadslug]:hover, #libraryResults [data-action="load"]:hover{
+  background: var(--gm-blue-hov) !important; border-color: var(--gm-blue-hov) !important;
 }
 
-/* Outline + secondary stay neutral */
-.btn.outline,
-button.btn.outline,
-a.btn.outline,
-.btn.secondary,
-button.btn.secondary,
-a.btn.secondary{
-  background:#fff;
-  color:inherit;
-  border-color:currentColor;
+/* Chips (active) */
+.mycat-toolbar .chip.active, .chip.active{
+  background: var(--gm-blue) !important; border-color: var(--gm-blue) !important; color:#fff !important;
 }
 
 /* Focus ring */
-button:focus,
-.btn:focus,
-input:focus,
-select:focus,
-textarea:focus{
-  outline-color: var(--gm-blue);
-  box-shadow: 0 0 0 2px rgba(2,107,199,0.4);
+button:focus, .btn:focus, input:focus, select:focus, textarea:focus{
+  outline-color: var(--gm-blue) !important;
+  box-shadow: 0 0 0 2px rgba(107,114,128,0.35) !important; /* #6b7280 */
 }
-
-/* Avatars (single definition) */
-#acctAvatarMini, #acctAvatar{
-  width: 40px; height: 40px; /* override as needed on account page */
-  border-radius: 50%;
-  object-fit: cover;
-  background: #fff;
-  border: 1px solid #dcdcdc;
-}
-#acctAvatar{ width:72px; height:72px; } /* larger on account page */
-#acctAvatarMini:not([src]),
-#acctAvatar:not([src]),
-#acctAvatarMini[src=""],
-#acctAvatar[src=""]{
-  background:#fff;
-  border:1px solid #dcdcdc;
-}
-
-/* Results / Library “Load” buttons */
-#results [data-loadslug],
-#results [data-action="load"],
-#libraryResults [data-loadslug],
-#libraryResults [data-action="load"]{
-  background: var(--gm-blue);
-  border-color: var(--gm-blue);
-  color:#fff;
-}
-#results [data-loadslug]:hover,
-#results [data-action="load"]:hover,
-#libraryResults [data-loadslug]:hover,
-#libraryResults [data-action="load"]:hover{
-  background: var(--gm-blue-hov);
-  border-color: var(--gm-blue-hov);
-}
-
-/* Nav layout helper to pin auth right (used by JS ordering code) */
-.nav-spacer{ flex:1 1 auto; }
 
 /* Account page buttons */
 #page-account .btn:not(.outline):not(.secondary){
-  background: var(--gm-blue);
-  border-color: var(--gm-blue);
-  color:#fff;
+  background: var(--gm-blue) !important; border-color: var(--gm-blue) !important; color:#fff !important;
 }
 #page-account .btn:not(.outline):not(.secondary):hover{
-  background: var(--gm-blue-hov);
-  border-color: var(--gm-blue-hov);
+  background: var(--gm-blue-hov) !important; border-color: var(--gm-blue-hov) !important;
 }
 #page-account .btn.outline{
-  background:#fff;
-  color:var(--gm-blue);
-  border-color:var(--gm-blue);
+  background:#fff !important; color: var(--gm-blue) !important; border-color: var(--gm-blue) !important;
 }
 #page-account .btn.outline:hover{
-  background:var(--gm-blue);
-  color:#fff;
-  border-color:var(--gm-blue);
+  background: var(--gm-blue) !important; color:#fff !important; border-color: var(--gm-blue) !important;
 }
 #page-account .ms-check{ accent-color: var(--gm-blue); }
 
-/* Minor text bits */
-.gm-byline, .gm-userline{ font-size:12px; opacity:.75; line-height:1.2; }
+/* Avatars (single source of truth) */
+#acctAvatarMini, #acctAvatar{
+  border-radius:50%; object-fit:cover; background:#fff; border:1px solid #dcdcdc;
+}
+#acctAvatar{ width:72px; height:72px; }
+#acctAvatarMini{ width:40px; height:40px; }
+#acctAvatarMini:not([src]), #acctAvatar:not([src]), #acctAvatarMini[src=""], #acctAvatar[src=""]{
+  background:#fff; border:1px solid #dcdcdc;
+}
+
+/* Spacer used by JS to pin Account/Logout right */
+.nav-spacer{ flex:1 1 auto; }
