@@ -2289,17 +2289,19 @@ gm_admin_listEl()?.addEventListener('click', (e)=>{
     admPlayBtn.addEventListener('click', () => { try{ window.ensureAudio?.(); }catch{} }, {capture:true});
   }
 
-  // TIME_SIGS fallback (matches your builder)
-  const TS = window.TIME_SIGS || {
-    "2/4":{steps:8,type:"simple"}, "3/4":{steps:12,type:"simple"}, "4/4":{steps:16,type:"simple"},
-    "5/4":{steps:20,type:"simple"}, "6/8":{steps:6,type:"compound"}, "7/8":{steps:7,type:"compound"},
-    "9/8":{steps:9,type:"compound"}, "12/8":{steps:12,type:"compound"}
-  };
-  const msPerStep = (sig, tempo) => {
-assignDeepSafe(()=>(const subdiv = (TS[sig]), 'type', == 'simple') ? 4 : 2); // simple=16ths, compound=8ths
-    const t = parseInt(tempo,10) || 100;
-    return (60 / t) * 1000 / subdiv;
-  };
+// TIME_SIGS fallback (matches your builder)
+const TS = window.TIME_SIGS || {
+  "2/4":{steps:8,type:"simple"}, "3/4":{steps:12,type:"simple"}, "4/4":{steps:16,type:"simple"},
+  "5/4":{steps:20,type:"simple"}, "6/8":{steps:6,type:"compound"}, "7/8":{steps:7,type:"compound"},
+  "9/8":{steps:9,type:"compound"}, "12/8":{steps:12,type:"compound"}
+};
+
+const msPerStep = (sig, tempo) => {
+  const info   = TS[sig] || { type: 'simple' };
+  const subdiv = (info.type === 'simple') ? 4 : 2; // simple=16ths, compound=8ths
+  const t = parseInt(tempo, 10) || 100;
+  return (60 / t) * 1000 / subdiv;
+};
 
   let T = null;
   let step = 0;
