@@ -459,17 +459,59 @@ byId('playBtn')?.addEventListener('click', () => {
 
   function matchGrooves(){ const cur=serializeBar1(); const need=TIME_SIGS[CURRENT_SIG]?.steps||16; const out=[]; allApproved().forEach(g=>{ const gLen=TIME_SIGS[g.timeSig||'4/4']?.steps||16; if (gLen!==need) return; const exact=g.H===cur.exact.H && g.S===cur.exact.S && g.K===cur.exact.K; const close=!exact && g.H.replace(/2/g,'1')===cur.loose.H && g.S.replace(/2/g,'1')===cur.loose.S && g.K===cur.loose.K; if (exact||close) out.push({...g, match: exact?'Exact':'Close'}); }); return out; }
 
-  function loadGroove(g){
-    if (intervalId){ clearTimeout(intervalId); intervalId=null; byId('playBtn')?.setAttribute('aria-pressed','false'); byId('playBtn')?.textContent='Play'; }
-    const gSig = g.timeSig || '4/4';
-    if (gSig !== CURRENT_SIG){ byId('sig').value = gSig; rebuildForSig(gSig); showMeasure2(false); measureCount = 1; }
-    else { applyDefaultsBoth(); }
-    if (g.tempo) byId('tempo').value = String(g.tempo);
-    const writeRow = (row,str)=>{ for (let i=0;i<STEPS;i++){ const ch=str[i]||'0'; if(row===HH) gridState[0][HH][i] = (ch==='2')?2:(ch==='1'?1:0); if(row===SN) gridState[0][SN][i] = (ch==='2')?2:(ch==='1'?1:0); if(row===BD) gridState[0][BD][i] = (ch!=='0')?1:0; } };
-    writeRow(HH,g.H||''); writeRow(SN,g.S||''); writeRow(BD,g.K||'');
-    hatLockNext[0].fill(false); for (let c=0;c<STEPS-1;c++){ if (gridState[0][HH][c]===2){ gridState[0][HH][c+1]=0; hatLockNext[0][c+1]=true; } }
-    buildMeasure(0); showMeasure2(false);
+function loadGroove(g){
+  // Stop playback and reset Play button state
+  if (intervalId){
+    clearTimeout(intervalId);
+    intervalId = null;
+    const pb = byId('playBtn');
+    if (pb) {
+      pb.setAttribute('aria-pressed','false');
+      pb.textContent = 'Play';
+    }
   }
+
+  // Handle time signature change
+  const gSig = g.timeSig || '4/4';
+  if (gSig !== CURRENT_SIG){
+    const sigEl = byId('sig');
+    if (sigEl) sigEl.value = gSig;
+    rebuildForSig(gSig);
+    showMeasure2(false);
+    measureCount = 1;
+  } else {
+    applyDefaultsBoth();
+  }
+
+  // Tempo (guarded)
+  const tempoEl = byId('tempo');
+  if (g.tempo && tempoEl) tempoEl.value = String(g.tempo);
+
+  // Write rows
+  const writeRow = (row, str) => {
+    for (let i = 0; i < STEPS; i++){
+      const ch = str[i] || '0';
+      if (row === HH) gridState[0][HH][i] = (ch === '2') ? 2 : (ch === '1' ? 1 : 0);
+      if (row === SN) gridState[0][SN][i] = (ch === '2') ? 2 : (ch === '1' ? 1 : 0);
+      if (row === BD) gridState[0][BD][i] = (ch !== '0') ? 1 : 0;
+    }
+  };
+  writeRow(HH, g.H || '');
+  writeRow(SN, g.S || '');
+  writeRow(BD, g.K || '');
+
+  // Rebuild hat lock & UI
+  hatLockNext[0].fill(false);
+  for (let c = 0; c < STEPS - 1; c++){
+    if (gridState[0][HH][c] === 2){
+      gridState[0][HH][c + 1] = 0;
+      hatLockNext[0][c + 1] = true;
+    }
+  }
+  buildMeasure(0);
+  showMeasure2(false);
+}
+
 
   byId('findBtn')?.addEventListener('click', ()=>{
     const results = byId('results'); if (!results) return;
