@@ -382,11 +382,32 @@ if (window.__GM_CLEAN_V4__) {
     };
     loop();
   }
-  byId('playBtn')?.addEventListener('click', ()=>{
-    if (intervalId){ clearTimeout(intervalId); intervalId=null; $$('.row .cell.playing').forEach(el=>el.classList.remove('playing')); byId('playBtn').textContent='Play'; byId('playBtn').setAttribute('aria-pressed','false'); }
-    else { playGroove(); byId('playBtn').textContent='Stop'; byId('playBtn').setAttribute('aria-pressed','true'); }
-  });
-  byId('trashBtn')?.addEventListener('click', ()=>{ applyDefaultsBoth(); buildMeasure(0); if (measureCount===2) buildMeasure(1); });
+  // ----- Play/Stop Button -----
+byId('playBtn')?.addEventListener('click', () => {
+  const pb = byId('playBtn');
+
+  if (intervalId) {
+    // Stop
+    clearTimeout(intervalId);
+    intervalId = null;
+
+    $$('.row .cell.playing').forEach(el => el.classList.remove('playing'));
+
+    if (pb) {
+      pb.textContent = 'Play';
+      pb.setAttribute('aria-pressed', 'false');
+    }
+  } else {
+    // Start
+    playGroove();
+
+    if (pb) {
+      pb.textContent = 'Stop';
+      pb.setAttribute('aria-pressed', 'true');
+    }
+  }
+});
+
 
   function rebuildForSig(sig){
     CURRENT_SIG = sig;
