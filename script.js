@@ -485,6 +485,49 @@ byId('playBtn')?.addEventListener('click', () => {
     }
   }
 });
+  
+// ---- Trash / Reset (page-builder) ----
+function resetBuilder(){
+  // stop playback + clear play state
+  if (intervalId){ clearTimeout(intervalId); intervalId = null; }
+  document.querySelectorAll('.row .cell.playing').forEach(el => el.classList.remove('playing'));
+  const pb = document.getElementById('playBtn');
+  if (pb){ pb.textContent = 'Play'; pb.setAttribute('aria-pressed','false'); }
+
+  // keep current signature/tempo as-is
+  const sigEl = document.getElementById('sig');
+  const sig   = sigEl ? sigEl.value : (CURRENT_SIG || '4/4');
+  const info  = (window.TIME_SIGS && window.TIME_SIGS[sig]) || { steps: 16 };
+  const steps = info.steps || 16;
+
+  // reset state for both measures
+  CURRENT_SIG = sig;
+  STEPS = steps;
+  gridState = [
+    [Array(steps).fill(0), Array(steps).fill(0), Array(steps).fill(0)],
+    [Array(steps).fill(0), Array(steps).fill(0), Array(steps).fill(0)]
+  ];
+  hatLockNext = [Array(steps).fill(false), Array(steps).fill(false)];
+
+  // rebuild UI columns + measures
+  if (typeof setColsCSS === 'function'){ setColsCSS(0, steps); setColsCSS(1, steps); }
+  if (typeof buildMeasure === 'function'){
+    buildMeasure(0);
+    if (measureCount === 2){ buildMeasure(1); } else if (typeof showMeasure2 === 'function'){ showMeasure2(false); }
+  }
+
+  // apply your “blank/default” pattern (backbeat, hats, etc.) if you use it
+  if (typeof applyDefaultsBoth === 'function') applyDefaultsBoth();
+}
+
+// bind once
+(function bindTrash(){
+  const btn = document.getElementById('trashBtn');
+  if (btn && !btn.__gmBound){
+    btn.addEventListener('click', resetBuilder);
+    btn.__gmBound = true;
+  }
+})();
 
 
   function rebuildForSig(sig){
