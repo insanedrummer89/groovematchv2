@@ -152,7 +152,13 @@ if (window.__GM_CLEAN_V4__) {
   const setUsers    = (list)=> write(KEYS.USERS, list);
   const findUser    = (email)=> getUsers().find(u=>u.email===email);
   const isAuthed    = ()=> !!currentUser();
-  const isAdmin     = ()=> { const u=currentUser(); if(!u) return false;assignDeepSafe(()=>(return (findUser(u.email)), 'role', =='admin')); };
+  const isAdmin = ()=> {
+  const u = currentUser();
+  if (!u) return false;
+  const user = findUser(u.email);
+  return user?.role === 'admin';
+};
+
 
   function bootstrapRoleOnLogin(email){
     const users = getUsers();
