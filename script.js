@@ -1,4 +1,61 @@
-   GooveMatch — Single-source clean build (v2025-09-04-4)
+/* 
+  GrooveMatch — UNIFIED BUILD (merge2, 2025-09-04)
+  ------------------------------------------------
+  This file merges:
+  • LIVE base (clean build)
+  • USER script (your prior patches: submit modal sync, pattern UI, admin pending/approve fixes, audio bridge, etc.)
+
+  Notes:
+  - Keep LIVE as the base, layer USER patches after.
+  - Avoid optional-chaining on the left side of assignments (e.g., el?.value = ... is illegal).
+  - Use guarded assignments instead: const el = byId('id'); if (el) el.value = ...;
+*/
+
+// ------- Safe deep assignment helper (ONLY used when needed; guarded) -------
+(function(){
+  if (!window.__GM_ASSIGN_DEEP__) {
+    window.__GM_ASSIGN_DEEP__ = true;
+    window.assignDeepSafe = function(getter, path, value){
+      try{
+        const el = (typeof getter === 'function') ? getter() : getter;
+        if (!el) return;
+        const parts = String(path).split('.');
+        let obj = el;
+        for (let i = 0; i < parts.length - 1; i++){
+          if (!obj) return;
+          obj = obj[parts[i]];
+        }
+        if (obj) obj[parts[parts.length - 1]] = value;
+      } catch (e) { /* no-op */ }
+    };
+  }
+})();
+
+
+// ------- Safe deep assignment helper (fixes "Invalid left-hand side" with ?.prop = value) -------
+(function(){
+  if (!window.__GM_ASSIGN_DEEP__) {
+    window.__GM_ASSIGN_DEEP__ = true;
+    window.assignDeepSafe = function(getter, path, value){
+      try{
+        const el = (typeof getter === 'function') ? getter() : getter;
+        if (!el) return;
+        const parts = String(path).split('.');
+        let obj = el;
+        for (let i = 0; i < parts.length - 1; i++){
+          if (!obj) return;
+          obj = obj[parts[i]];
+        }
+        if (obj) obj[parts[parts.length - 1]] = value;
+      }catch{}
+    };
+  }
+})();
+
+
+/* ===== BEGIN LIVE BASE ===== */
+/*
+  GrooveMatch — Single-source clean build (v2025-09-04-4)
   -------------------------------------------------------
   • Consolidates all behaviors into one file (no duplicate listeners or functions)
   • Include ONCE via: <script type="module" src="/script.js?v=2025-09-04-4"></script>
