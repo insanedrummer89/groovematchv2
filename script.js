@@ -397,7 +397,12 @@ if (window.__GM_CLEAN_V4__) {
     setColsCSS(0,STEPS); setColsCSS(1,STEPS);
     buildMeasure(0); buildMeasure(1);
     applyDefaultsBoth();
-    if (intervalId){ clearTimeout(intervalId); intervalId=null; byId('playBtn')?.setAttribute('aria-pressed','false'); byId('playBtn')?.textContent='Play'; }
+    if (intervalId){
+  clearTimeout(intervalId); intervalId=null;
+  byId('playBtn')?.setAttribute('aria-pressed','false');
+  const pb = byId('playBtn'); if (pb) pb.textContent = 'Play';
+}
+
     $$('.row .cell.playing').forEach(el=>el.classList.remove('playing'));
   }
 
