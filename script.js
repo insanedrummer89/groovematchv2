@@ -145,10 +145,8 @@ function renderAccount(){
       window.__gm_wrap_rl = true;
     }
   });
-})();</script>
+})();
 
-  
-<script>
 (() => {
   /* ---------------- Local "Auth" + Roles (demo) ---------------- */
   const KEYS = {
