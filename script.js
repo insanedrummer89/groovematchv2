@@ -766,3 +766,143 @@ if (window.__GM_CLEAN_V4__) {
     console.log('%cGrooveMatch clean build loaded (v2025-09-04-4)','padding:2px 6px;border-radius:4px;background:#111;color:#0f0');
   });
 }
+// ==== Submit Groove modal — Netlify-safe wiring (paste at END of script.js) ====
+document.addEventListener('DOMContentLoaded', () => {
+  const $ = (s, r=document) => r.querySelector(s);
+
+  const submitBtn   = $('#submitBtn');          // the "Submit Groove" top-right button
+  const submitModal = $('#submitModal');        // the modal wrapper
+  const form        = $('#submitForm');         // the <form> inside the modal
+  const subSig      = $('#subSig');             // readonly/mirrored field in modal
+  const subTempo    = $('#subTempo');           // readonly/mirrored field in modal
+
+  // bail if your page doesn’t have the modal on this route
+  if (!submitBtn || !submitModal || !form) return;
+
+  // open modal and mirror current grid meta
+  function mirrorMeta() {
+    const sigEl = $('#sig');     // builder selects
+    const bpmEl = $('#tempo');
+
+    const sig  = (sigEl?.value || '4/4');
+    const bpm  = (bpmEl?.value || '100');
+
+    if (subSig)   subSig.value   = sig;
+    if (subTempo) subTempo.value = `${bpm} BPM`;
+  }
+
+  function openModal() {
+    mirrorMeta();
+    submitModal.setAttribute('aria-hidden', 'false');
+    // run mirror again a few times in case the builder finishes rendering after click
+    let n = 4; const t = setInterval(() => { mirrorMeta(); if (--n <= 0) clearInterval(t); }, 100);
+  }
+
+  // close helper (if you have an “X” in the modal with data-close)
+  submitModal.addEventListener('click', (e) => {
+    if (e.target.matches('[data-close], .modal [aria-label="Close"]')) {
+      submitModal.setAttribute('aria-hidden', 'true');
+    }
+  }, true);
+
+  // bind open button (replace existing handlers safely)
+  const btnClone = submitBtn.cloneNode(true);
+  submitBtn.parentNode.replaceChild(btnClone, submitBtn);
+  btnClone.addEventListener('click', (e) => {
+    e.preventDefault();
+    openModal();
+  });
+
+  // robust localStorage helpers
+  const get = (k, d=[]) => { try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return Array.isArray(v) ? v : d; } catch { return d; } };
+  const set = (k, v)    => localStorage.setItem(k, JSON.stringify(v));
+
+  // derive display name from session (email → before @)
+  function currentUser() {
+    try { return JSON.parse(localStorage.getItem('gm_session') || 'null'); } catch { return null; }
+  }
+  function deriveDisplay(email){ return email ? String(email).split('@')[0] : 'Guest'; }
+
+  // capture current grid (works even if your A_grid isn’t present)
+  function captureGroove() {
+    const sig   = $('#sig')?.value || '4/4';
+    const tempo = ($('#tempo')?.value || '100').toString();
+    const stepsMap = { '2/4':8,'3/4':12,'4/4':16,'5/4':20,'6/8':12,'7/8':14,'9/8':18,'12/8':24 };
+    const steps = stepsMap[sig] || 16;
+
+    const readRow = (sel, kind) => {
+      const cells = Array.from(document.querySelectorAll(`${sel} .cell`));
+      if (!cells.length && Array.isArray(window.A_grid?.[0])) {
+        // fallback to arrays if DOM rows aren’t mounted
+        const rowIdx = kind==='H'?0:kind==='S'?1:2;
+        return (window.A_grid[rowIdx] || []).slice(0, steps).map(v => String(v|0)).join('');
+      }
+      return cells.slice(0, steps).map(c => {
+        const t = (c.textContent || '').trim();
+        if (kind==='H') return (t==='x>'||t==='x›') ? '3' : (t==='O' ? '2' : (t==='x' ? '1' : '0'));
+        if (kind==='S') return (t==='(●)') ? '2' : (t==='●' ? '1' : '0');
+        if (kind==='K') return (t==='●') ? '1' : '0';
+        return '0';
+      }).join('');
+    };
+
+    const H = readRow('#m1-hat','H'), S = readRow('#m1-snare','S'), K = readRow('#m1-kick','K');
+    const hasBar2 = getComputedStyle($('#m2') || document.createElement('div')).display !== 'none';
+    const H2 = hasBar2 ? readRow('#m2-hat','H')   : '';
+    const S2 = hasBar2 ? readRow('#m2-snare','S') : '';
+    const K2 = hasBar2 ? readRow('#m2-kick','K')  : '';
+
+    return { sig, tempo, bars: hasBar2 ? 2 : 1, H, S, K, H2, S2, K2 };
+  }
+
+  // submit handler (stores to localStorage so you can view it in Pending/Library)
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+
+    const fd = new FormData(form);
+    const type    = (fd.get('type')   || 'song').toString();
+    let   title   = (fd.get('title')  || '').toString().trim();
+    const artist  = (fd.get('artist') || '').toString().trim();
+    const drummer = (fd.get('drummer')|| '').toString().trim();
+    const genre   = (fd.get('genre')  || '').toString().trim();
+
+    const user    = currentUser();
+    const email   = user?.email || null;
+    const display = user?.display || deriveDisplay(email || '');
+
+    const cap = captureGroove();
+    if (!title && type === 'pattern') title = `Pattern by ${display}`;
+
+    const rec = {
+      type,
+      title,
+      artist,
+      drummer,
+      genre,
+      timeSig: cap.sig,
+      tempo: cap.tempo,
+      bars: cap.bars,
+      H: cap.H, S: cap.S, K: cap.K, H2: cap.H2, S2: cap.S2, K2: cap.K2,
+      submittedAt: new Date().toISOString(),
+      by: email,
+      display,
+      slug: (title || 'groove').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'')
+    };
+
+    // No backend yet → keep patterns “approved”, songs “pending”
+    if (type === 'pattern') {
+      const list = get('gm_approved_submissions', []);
+      list.unshift({ ...rec, approvedAt: Date.now() });
+      set('gm_approved_submissions', list);
+    } else {
+      const pend = get('gm_pending_submissions', []);
+      pend.unshift(rec);
+      set('gm_pending_submissions', pend);
+    }
+
+    // close + clear
+    submitModal.setAttribute('aria-hidden', 'true');
+    try { form.reset(); } catch {}
+    (window.toast || alert)('Thanks for the Sick Groove!');
+  });
+});
