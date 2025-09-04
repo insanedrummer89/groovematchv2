@@ -4812,3 +4812,50 @@ window.findByText = window.findByText || function (root, text, {selector='*', ex
   arm();
   new MutationObserver(arm).observe(document.body, { childList:true, subtree:true });
 })();
+
+/* ---------- GROOVEMATCH: Single delegated handlers for modals ---------- */
+(function modalWiringOnce(){
+  if (window.__gmModalWired) return;  // avoid double-binding
+  window.__gmModalWired = true;
+
+  // Helper: resolve element or id
+  function byId(id){ return document.getElementById(id); }
+
+  // Your existing open/close can be used if present; otherwise simple fallbacks:
+  window.openModal = window.openModal || function(elOrId){
+    const el = typeof elOrId === 'string' ? byId(elOrId) : elOrId;
+    if (!el) return console.warn('openModal: not found', elOrId);
+    el.classList.add('show');
+    el.removeAttribute('aria-hidden');
+  };
+  window.closeModal = window.closeModal || function(elOrId){
+    const el = typeof elOrId === 'string' ? byId(elOrId) : elOrId;
+    if (!el) return console.warn('closeModal: not found', elOrId);
+    el.classList.remove('show');
+    el.setAttribute('aria-hidden', 'true');
+  };
+
+  // ONE listener for all modal open/close
+  document.addEventListener('click', (e) => {
+    const openTrig = e.target.closest('[data-modal-open]');
+    if (openTrig){
+      const id = openTrig.getAttribute('data-modal-open');
+      if (id) openModal(id);
+    }
+
+    const closeTrig = e.target.closest('[data-modal-close], .modal [data-close], .modal .x, .modal .backdrop');
+    if (closeTrig){
+      const modal = closeTrig.closest('.modal');
+      if (modal) closeModal(modal);
+    }
+  }, { capture:false, passive:true });
+
+  // Optional: ESC to close the topmost modal
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape'){
+      const top = document.querySelector('.modal.show:last-of-type') || document.querySelector('.modal.show');
+      if (top) closeModal(top);
+    }
+  });
+})();
+
