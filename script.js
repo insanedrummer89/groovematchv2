@@ -1,8 +1,8 @@
 /*
-  GrooveMatch — Single-source clean build (v2025-09-04)
-  -----------------------------------------------------
+  GrooveMatch — Single-source clean build (v2025-09-04-4)
+  -------------------------------------------------------
   • Consolidates all behaviors into one file (no duplicate listeners or functions)
-  • Works when included ONCE via: <script type="module" src="/script.js?v=2025-09-04"></script>
+  • Include ONCE via: <script type="module" src="/script.js?v=2025-09-04-4"></script>
   • Assumes no inline <script> blocks in index.html. If any remain, strip them.
 
   Major features retained/fixed:
@@ -14,6 +14,7 @@
   - Route guard: if logged out, nav buttons to protected tabs toast and redirect to page-builder
   - Groove Library: default filter to Songs, filters & sort, Copy Link, Load, admin-only × delete with persistence
   - Admin panel: review Pending, edit/save, approve (moves to Approved), reject (with Undo), approved cache panel
+  - Deep-links (#g=slug) load the groove into the builder
 
   IMPORTANT DOM IDs used (must match HTML):
   Header/nav: homeLink, authBtn, logoutBtn, adminBtn, libraryBtn, who
@@ -28,10 +29,10 @@
 */
 
 // ======= Guard against double-evaluations (HMR, duplicate tags) =======
-if (window.__GM_CLEAN_V3__) {
+if (window.__GM_CLEAN_V4__) {
   console.warn('GrooveMatch clean script already loaded.');
 } else {
-  window.__GM_CLEAN_V3__ = true;
+  window.__GM_CLEAN_V4__ = true;
 
   // ===================== Utilities & UI helpers =====================
   const $ = (sel, root=document) => root.querySelector(sel);
@@ -59,14 +60,18 @@ if (window.__GM_CLEAN_V3__) {
     };
   })();
 
-  // Modal helpers (idempotent)
+  // Modal helpers (idempotent) — supports .show and aria-hidden
   window.openModal = window.openModal || function(elOrId){
     const el = typeof elOrId==='string' ? byId(elOrId) : elOrId;
-    if (el) el.setAttribute('aria-hidden','false');
+    if (!el) return;
+    el.setAttribute('aria-hidden','false');
+    el.classList.add('show');
   };
   window.closeModal = window.closeModal || function(elOrId){
     const el = typeof elOrId==='string' ? byId(elOrId) : elOrId;
-    if (el) el.setAttribute('aria-hidden','true');
+    if (!el) return;
+    el.setAttribute('aria-hidden','true');
+    el.classList.remove('show');
   };
 
   // Navigation between pseudo-pages
@@ -378,7 +383,7 @@ if (window.__GM_CLEAN_V3__) {
     loop();
   }
   byId('playBtn')?.addEventListener('click', ()=>{
-    if (intervalId){ clearInterval(intervalId); intervalId=null; $$('.row .cell.playing').forEach(el=>el.classList.remove('playing')); byId('playBtn').textContent='Play'; byId('playBtn').setAttribute('aria-pressed','false'); }
+    if (intervalId){ clearTimeout(intervalId); intervalId=null; $$('.row .cell.playing').forEach(el=>el.classList.remove('playing')); byId('playBtn').textContent='Play'; byId('playBtn').setAttribute('aria-pressed','false'); }
     else { playGroove(); byId('playBtn').textContent='Stop'; byId('playBtn').setAttribute('aria-pressed','true'); }
   });
   byId('trashBtn')?.addEventListener('click', ()=>{ applyDefaultsBoth(); buildMeasure(0); if (measureCount===2) buildMeasure(1); });
@@ -392,12 +397,9 @@ if (window.__GM_CLEAN_V3__) {
     setColsCSS(0,STEPS); setColsCSS(1,STEPS);
     buildMeasure(0); buildMeasure(1);
     applyDefaultsBoth();
-    if (intervalId){ clearInterval(intervalId); intervalId=null; byId('playBtn')?.setAttribute('aria-pressed','false'); byId('playBtn')?.textContent='Play'; }
+    if (intervalId){ clearTimeout(intervalId); intervalId=null; byId('playBtn')?.setAttribute('aria-pressed','false'); byId('playBtn')?.textContent='Play'; }
     $$('.row .cell.playing').forEach(el=>el.classList.remove('playing'));
   }
-  byId('sig')?.addEventListener('change', (e)=>{ rebuildForSig(e.target.value); });
-  window.addEventListener('touchstart', ()=> ensureAudio(), {once:true});
-  rebuildForSig('4/4'); showMeasure2(false);
 
   // ===================== Built-ins, search & load =====================
   const groovesSeed = [
@@ -432,7 +434,7 @@ if (window.__GM_CLEAN_V3__) {
   function matchGrooves(){ const cur=serializeBar1(); const need=TIME_SIGS[CURRENT_SIG]?.steps||16; const out=[]; allApproved().forEach(g=>{ const gLen=TIME_SIGS[g.timeSig||'4/4']?.steps||16; if (gLen!==need) return; const exact=g.H===cur.exact.H && g.S===cur.exact.S && g.K===cur.exact.K; const close=!exact && g.H.replace(/2/g,'1')===cur.loose.H && g.S.replace(/2/g,'1')===cur.loose.S && g.K===cur.loose.K; if (exact||close) out.push({...g, match: exact?'Exact':'Close'}); }); return out; }
 
   function loadGroove(g){
-    if (intervalId){ clearInterval(intervalId); intervalId=null; byId('playBtn')?.setAttribute('aria-pressed','false'); byId('playBtn')?.textContent='Play'; }
+    if (intervalId){ clearTimeout(intervalId); intervalId=null; byId('playBtn')?.setAttribute('aria-pressed','false'); byId('playBtn')?.textContent='Play'; }
     const gSig = g.timeSig || '4/4';
     if (gSig !== CURRENT_SIG){ byId('sig').value = gSig; rebuildForSig(gSig); showMeasure2(false); measureCount = 1; }
     else { applyDefaultsBoth(); }
@@ -655,12 +657,12 @@ if (window.__GM_CLEAN_V3__) {
     el?.addEventListener('change', renderLibrary);
   });
   byId('libReset')?.addEventListener('click', ()=>{
-    byId('libSearch').value='';
-    byId('libType').value='song'; // keep Songs as default
-    byId('libSig').value='all';
-    byId('libMin').value='';
-    byId('libMax').value='';
-    byId('libSort').value='new';
+    byId('libSearch')?.value='';
+    byId('libType')?.value='song'; // keep Songs as default
+    byId('libSig')?.value='all';
+    byId('libMin')?.value='';
+    byId('libMax')?.value='';
+    byId('libSort')?.value='new';
     renderLibrary();
   });
 
@@ -739,10 +741,28 @@ if (window.__GM_CLEAN_V3__) {
     };
   }
 
+  // -------- Deep-link handler (#g=slug) --------
+  function handleDeepLink(){
+    const m = location.hash.match(/#g=([^&]+)/);
+    if (!m) return;
+    const slug = decodeURIComponent(m[1]);
+    const g = allApproved().find(x => (x.slug || '') === slug);
+    if (g){ loadGroove(g); showPage('page-builder'); }
+  }
+  window.addEventListener('hashchange', handleDeepLink);
+
   // ===================== Boot =====================
   document.addEventListener('DOMContentLoaded', ()=>{
+    // grid + audio init AFTER DOM is parsed so rows/buttons exist
+    rebuildForSig(byId('sig')?.value || '4/4');
+    showMeasure2(false);
+    window.addEventListener('touchstart', ()=> ensureAudio(), {once:true});
+    byId('sig')?.addEventListener('change', (e)=> rebuildForSig(e.target.value));
+
     refreshHeader();
     renderLibrary();
-    console.log('%cGrooveMatch clean build loaded','padding:2px 6px;border-radius:4px;background:#111;color:#0f0');
+    handleDeepLink(); // load shared groove if present
+
+    console.log('%cGrooveMatch clean build loaded (v2025-09-04-4)','padding:2px 6px;border-radius:4px;background:#111;color:#0f0');
   });
 }
