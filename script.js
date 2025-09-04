@@ -1147,16 +1147,42 @@ document.addEventListener('DOMContentLoaded', renderAccount);
 })();
 
 (function submitTypeToggle(){
-  const $ = s=>document.querySelector(s);
+  const $ = s => document.querySelector(s);
+
   function syncTypeFields(){
-assignDeepSafe(()=>(const isPattern = $('#submitType')), 'value', == 'pattern');
-    const wrap = $('#detailFields'); if (!wrap) return;
+    const typeEl   = $('#submitType');
+    const isPattern = !!typeEl && typeEl.value === 'pattern';
+
+    const wrap = $('#detailFields');
+    if (!wrap) return;
+
+    // Hide song-only detail fields when “Pattern” is selected
     wrap.style.display = isPattern ? 'none' : '';
-    wrap.querySelectorAll('input,select').forEach(el=>{
-      if (isPattern){ el.dataset._wasRequired = el.required ? '1':''; el.required=false; el.disabled=true; }
-      else { if (el.dataset._wasRequired==='1') el.required=true; el.disabled=false; }
+
+    // Toggle required/disabled on inner fields
+    wrap.querySelectorAll('input,select,textarea').forEach(el => {
+      if (isPattern){
+        el.dataset._wasRequired = el.required ? '1' : '';
+        el.required = false;
+        el.disabled = true;
+      } else {
+        if (el.dataset._wasRequired === '1') el.required = true;
+        el.disabled = false;
+      }
     });
   }
+
+  // Bind once
+  const typeEl = $('#submitType');
+  if (typeEl && !typeEl.__gmBound){
+    typeEl.addEventListener('change', syncTypeFields);
+    typeEl.__gmBound = true;
+  }
+
+  // Initial state on load/open
+  syncTypeFields();
+})();
+
   function fillMetaFromGrid(){
     const sig = $('#sig')?.value || '4/4';
     const bpm = $('#tempo')?.value || '100';
