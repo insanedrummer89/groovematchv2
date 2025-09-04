@@ -1,3 +1,1155 @@
+// Admin-only delete × for Groove Library (non-invasive, persistent)
+(function(){
+  function isStaff(){
+    try{
+      if (typeof isAdmin === 'function' && isAdmin()) return true;
+      if (typeof isMod === 'function' && isMod()) return true;
+      const session = JSON.parse(localStorage.getItem('gm_session')||'null');
+      const users   = JSON.parse(localStorage.getItem('gm_users')||'[]');
+      const rec     = session ? users.find(u=>u.email===session.email) : null;
+      return !!(rec && (rec.role==='admin' || rec.role==='mod'));
+    }catch(e){ return false; }
+  }
+
+  // --- persistence helpers (hide deleted items on every render) ---
+  function loadSet(key){ try{ return new Set(JSON.parse(localStorage.getItem(key)||'[]')); }catch(_){ return new Set(); } }
+  function keyTA(title, artist){ return (title||'').trim().toLowerCase() + '|' + (artist||'').trim().toLowerCase(); }
+  function getText(el, sels){
+    for (const s of sels){ const n = el.querySelector(s); if(n && n.textContent) return n.textContent.trim(); }
+    return '';
+  }
+  // === Account display name helper (global) ===
+function deriveDisplayName(email){
+  if(!email) return 'Guest';
+  return email.split('@')[0];
+}
+
+// === Update Account panel ===
+function renderAccount(){
+  const user = JSON.parse(localStorage.getItem('gm_session')||'null');
+  const $ = s => document.querySelector(s);
+  const nameEl = $('#acctDisplay');
+  const emailEl= $('#acctEmail');
+  const roleEl = $('#acctRole');
+  if (!nameEl || !emailEl || !roleEl) return; // elements not on this page
+
+  if(!user){
+    nameEl.textContent = 'Not signed in';
+    emailEl.textContent = '';
+    roleEl.textContent = '';
+    return;
+  }
+
+  const display = user.display || deriveDisplayName(user.email);
+  nameEl.textContent = display;
+  emailEl.textContent = user.email || '';
+  roleEl.textContent = user.role ? ('Role: ' + user.role) : '';
+}
+  
+  function applyDeletionsToGrid(){
+    const grid = document.getElementById('libGrid'); if(!grid) return;
+    const delSlugs = loadSet('gm_deleted');
+    const delTA    = loadSet('gm_deleted_ta');
+    grid.querySelectorAll('.lib-card, .card').forEach(card=>{
+      const slug   = (card.getAttribute('data-slug')||'').trim().toLowerCase();
+      const title  = getText(card, ['[data-title]','.lib-title','.title','h3','h4','strong']);
+      const artist = getText(card, ['[data-artist]','.artist','.sub','.meta .artist','.subtitle']);
+      const k = keyTA(title, artist);
+      if ((slug && delSlugs.has(slug)) || (k && delTA.has(k))) card.remove();
+    });
+  }
+
+  // --- add × buttons (admins only) ---
+  function addDeleteButtons(){
+    if(!isStaff()) return;
+    const grid = document.getElementById('libGrid'); if(!grid) return;
+    grid.querySelectorAll('.lib-card, .card').forEach(card=>{
+      if(card.querySelector('[data-del]')) return;
+      const loadBtn = card.querySelector('[data-load-slug]');
+      const slug = loadBtn ? (loadBtn.getAttribute('data-load-slug')||'') : (card.getAttribute('data-slug')||'');
+      const btn = document.createElement('button');
+      btn.className = 'icon-btn';
+      btn.setAttribute('data-del', slug);
+      btn.setAttribute('aria-label', 'Delete groove');
+      btn.title = 'Delete';
+      btn.textContent = '×';
+      btn.style.position = 'absolute';
+      btn.style.top = '6px';
+      btn.style.right = '6px';
+      btn.style.zIndex = '3';
+      btn.style.padding = '2px 6px';
+      btn.style.borderRadius = '6px';
+      // ensure positioning doesn't shift your UI
+      const cs = getComputedStyle(card);
+      if (cs.position === 'static') card.style.position = 'relative';
+      card.appendChild(btn);
+    });
+  }
+
+  // --- handle deletes (approved list or built-ins) ---
+  function wireDelete(){
+    const grid = document.getElementById('libGrid'); if(!grid) return;
+    grid.addEventListener('click', (e)=>{
+      const el = e.target.closest('[data-del]'); if(!el || !isStaff()) return;
+      if(!confirm('Delete this groove from the library?')) return;
+
+      const card  = el.closest('.lib-card, .card');
+      const slug  = el.getAttribute('data-del') || card?.getAttribute('data-slug') || '';
+      const title = getText(card||document, ['[data-title]','.lib-title','.title','h3','h4','strong']);
+      const artist= getText(card||document, ['[data-artist]','.artist','.sub','.meta .artist','.subtitle']);
+      const k     = keyTA(title, artist);
+
+      try{
+        const getApproved = (typeof window.getApproved==='function') ? window.getApproved : ()=>[];
+        const setApproved = (typeof window.setApproved==='function') ? window.setApproved : ()=>{};
+        const approved = getApproved();
+        let idx = approved.findIndex(x => (x.slug||'')===slug && slug);
+        if (idx < 0 && k) {
+          idx = approved.findIndex(x => keyTA(x.title, x.artist) === k);
+        }
+        if (idx >= 0) {
+          approved.splice(idx,1);
+          setApproved(approved);
+        } else {
+          // hide built-ins locally
+          const delSlugs = loadSet('gm_deleted'); if(slug) delSlugs.add(slug);
+          localStorage.setItem('gm_deleted', JSON.stringify([...delSlugs]));
+          const delTA = loadSet('gm_deleted_ta'); if(k) delTA.add(k);
+          localStorage.setItem('gm_deleted_ta', JSON.stringify([...delTA]));
+        }
+      }catch(err){ console.error('Delete failed', err); }
+
+      // optimistic UI + full refresh
+      if(card && card.parentNode) card.parentNode.removeChild(card);
+      if(typeof window.renderLibrary==='function'){ try{ window.renderLibrary(); }catch(_){ } }
+    });
+  }
+
+  // --- init & keep it working across re-renders ---
+  document.addEventListener('DOMContentLoaded', ()=>{
+    applyDeletionsToGrid();
+    addDeleteButtons();
+    wireDelete();
+    const grid = document.getElementById('libGrid');
+    if(grid){
+      const mo = new MutationObserver(()=>{ applyDeletionsToGrid(); addDeleteButtons(); });
+      mo.observe(grid, {childList:true, subtree:true});
+    }
+    if(typeof window.renderLibrary==='function' && !window.__gm_wrap_rl){
+      const orig = window.renderLibrary;
+      window.renderLibrary = function(){
+        const r = orig.apply(this, arguments);
+        try{ applyDeletionsToGrid(); addDeleteButtons(); }catch(_){}
+        return r;
+      };
+      window.__gm_wrap_rl = true;
+    }
+  });
+})();</script>
+
+  
+<script>
+(() => {
+  /* ---------------- Local "Auth" + Roles (demo) ---------------- */
+  const KEYS = {
+    SESSION:"gm_session",
+    PENDING:"gm_pending_submissions",
+    APPROVED:"gm_approved_submissions",
+    USERS:"gm_users" // [{email, role:'admin'|'user'}]
+  };
+  const read = (k,f)=>{ try{ const v=JSON.parse(localStorage.getItem(k)||"null"); return v??f; }catch(e){ return f; } };
+  const write=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
+
+  const currentUser = ()=> read(KEYS.SESSION,null);
+  const getUsers = ()=> read(KEYS.USERS,[]);
+  const setUsers = (list)=> write(KEYS.USERS, list);
+  const findUser = (email)=> getUsers().find(u=>u.email===email);
+  const isAuthed = ()=> !!currentUser();
+  const isAdmin = ()=> {
+    const u=currentUser(); if(!u) return false;
+    const rec = findUser(u.email); return rec?.role==='admin';
+  };
+
+  // Bootstrap: first ever user becomes admin
+  function bootstrapRoleOnLogin(email){
+    const users = getUsers();
+    if(!users.length){ users.push({email, role:'admin'}); setUsers(users); return 'admin'; }
+    if(!users.find(u=>u.email===email)){ users.push({email, role:'user'}); setUsers(users); return 'user'; }
+    return findUser(email)?.role || 'user';
+  }
+
+  // UI elements
+  const whoEl = document.getElementById('who');
+  const authBtn = document.getElementById('authBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
+  const adminBtn = document.getElementById('adminBtn');
+  const libraryBtn = document.getElementById('libraryBtn');
+
+ function refreshAuthUI(){
+  const sess = currentUser();
+  const role = sess ? (findUser(sess.email)?.role || 'user') : '';
+  whoEl.textContent = sess ? `Signed in as ${sess.email} · ${role}` : '';
+  authBtn.textContent = sess ? 'Account' : 'Log in / Sign up';
+  logoutBtn.style.display = sess ? '' : 'none';
+  adminBtn.style.display = (sess && role==='admin') ? '' : 'none';
+
+  // In Thanks modal, only show "Review Now" to admins
+  const reviewBtn = document.getElementById('openPendingNowBtn');
+  if (reviewBtn) {
+    reviewBtn.style.display = (sess && role==='admin') ? '' : 'none';
+  }
+
+  // NEW: update the Account panel
+  renderAccount();
+}
+
+  // Home/logo -> show builder page
+  document.getElementById('homeLink').addEventListener('click', (e)=>{
+    e.preventDefault();
+    showPage('page-builder');
+  });
+
+  // Navigation
+  libraryBtn.addEventListener('click', ()=>{ renderLibrary(); showPage('page-library'); });
+  document.getElementById('adminBtn').addEventListener('click', ()=>{ if(!isAuthed()){ openLogin(); return; } if(!isAdmin()){ toast('Admins only.','danger'); return; } renderAdminList(); renderApprovedCache(); showPage('page-admin'); });
+  document.getElementById('backToBuilder').addEventListener('click', ()=> showPage('page-builder'));
+
+  // Login modal
+  const loginModal = document.getElementById('loginModal');
+  const openLogin  = ()=> loginModal.setAttribute('aria-hidden','false');
+  const closeLogin = ()=> loginModal.setAttribute('aria-hidden','true');
+  loginModal?.querySelectorAll('[data-close]').forEach(el=> el.addEventListener('click', closeLogin));
+
+  document.getElementById('doLogin').addEventListener('click', ()=>{
+    const email=document.getElementById('email').value.trim();
+    const pass=document.getElementById('pass').value;
+    if(!email || pass.length<6){ toast('Enter a valid email and a 6+ char password.','danger'); return; }
+    const role = bootstrapRoleOnLogin(email);
+    write(KEYS.SESSION, { email, at: Date.now() });
+    toast(`Signed in as ${email} (${role}).`,'ok');
+    closeLogin(); refreshAuthUI(); showPage('page-account'); renderAccount();
+  });
+
+  // Header logout
+  logoutBtn.addEventListener('click', ()=>{
+    localStorage.removeItem(KEYS.SESSION);
+    toast('Signed out.','warn'); refreshAuthUI(); showPage('page-builder');
+  });
+
+  // Auth button toggles between opening login or account page
+  document.getElementById('authBtn').addEventListener('click', ()=>{
+    if(isAuthed()){ showPage('page-account'); renderAccount(); } else { openLogin(); }
+  });
+
+  /* ---------------- Toast ---------------- */
+  function toast(msg, tone="ok", withUndo=null){
+    const el=document.createElement('div');
+    el.innerHTML = withUndo ? `${msg} <button id="undoBtn" class="icon-btn" style="margin-left:8px">Undo</button>` : msg;
+    el.style.cssText='position:fixed;right:16px;bottom:16px;background:#fff;border:1px solid #e6eaf2;border-radius:10px;padding:8px 10px;box-shadow:0 6px 20px rgba(0,0,0,.08);z-index:9999';
+    if(tone==="danger") el.style.borderColor="#fecaca";
+    if(tone==="warn") el.style.borderColor="#fde68a";
+    document.body.appendChild(el);
+    let t = setTimeout(()=>el.remove(), 2200);
+    if(withUndo){
+      el.querySelector('#undoBtn').addEventListener('click', ()=>{ clearTimeout(t); el.remove(); withUndo(); });
+    }
+  }
+
+  /* ---------------- Sequencer + Audio ---------------- */
+  const TIME_SIGS = {
+    "2/4":  { steps: 8,  type:"simple",   accents:[0,4] },
+    "3/4":  { steps:12,  type:"simple",   accents:[0,4,8] },
+    "4/4":  { steps:16,  type:"simple",   accents:[0,4,8,12] },
+    "5/4":  { steps:20,  type:"simple",   accents:[0,4,8,12,16] },
+    "6/8":  { steps: 6,  type:"compound", accents:[0,3] },
+    "7/8":  { steps: 7,  type:"compound", accents:[0,2,4] },
+    "9/8":  { steps: 9,  type:"compound", accents:[0,3,6] },
+    "12/8": { steps:12,  type:"compound", accents:[0,3,6,9] }
+  };
+  const HH=0,SN=1,BD=2;
+  let CURRENT_SIG="4/4"; let STEPS=TIME_SIGS[CURRENT_SIG].steps; let measureCount=1;
+  const mEls=[{label:"m1-label",hat:"m1-hat",snare:"m1-snare",kick:"m1-kick"},{label:"m2-label",hat:"m2-hat",snare:"m2-snare",kick:"m2-kick"}];
+  const containers=(i)=>[document.getElementById(mEls[i].label),document.getElementById(mEls[i].hat),document.getElementById(mEls[i].snare),document.getElementById(mEls[i].kick)];
+  let gridState=[ [Array(STEPS).fill(0),Array(STEPS).fill(0),Array(STEPS).fill(0)], [Array(STEPS).fill(0),Array(STEPS).fill(0),Array(STEPS).fill(0)] ];
+  let hatLockNext=[ Array(STEPS).fill(false), Array(STEPS).fill(false) ];
+  const $  =(q,r=document)=>r.querySelector(q);
+  const $$ =(q,r=document)=>Array.from(r.querySelectorAll(q));
+  let ac=null; const ensureAudio=()=>{ if(!ac){ ac=new (window.AudioContext||window.webkitAudioContext)(); } if(ac.state==='suspended'){ ac.resume(); } };
+  const makeNoise=(len)=>{const b=ac.createBuffer(1,ac.sampleRate*len,ac.sampleRate);const d=b.getChannelData(0);for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1; return b;};
+  const hatNoise=()=>makeNoise(0.6), snrNoise=()=>makeNoise(0.3);
+  function playHat(open, tempo, sig, accent=false, scale=1.0){
+  ensureAudio();
+  const t=ac.currentTime;
+  const n=ac.createBufferSource(); n.buffer=hatNoise();
+  const hp = ac.createBiquadFilter(); hp.type='highpass'; hp.frequency.value = open ? 6000 : (accent ? 7000 : 8000);
+  const subdiv=(TIME_SIGS[sig]?.type==="simple")?4:2;
+  const stepDur=(60/tempo)/subdiv;
+  const dur=open?stepDur*1.9:stepDur*0.6;
+  const g=ac.createGain();
+  let basePeak = 0.6;
+if (open) basePeak = 0.75;
+else if (accent) basePeak = 0.99;
+else basePeak = 0.30;
+const peak = Math.min(1.0, basePeak * (scale||1));
+g.gain.setValueAtTime(0.001,t);
+  g.gain.linearRampToValueAtTime(peak,t+0.005);
+  g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+  n.connect(hp).connect(g).connect(ac.destination);
+  n.start(t); n.stop(t+dur+0.02);
+}
+
+  function playKick(v=1){ ensureAudio(); const t=ac.currentTime; const o=ac.createOscillator(), g=ac.createGain(); o.type='sine'; o.frequency.setValueAtTime(140,t); o.frequency.exponentialRampToValueAtTime(50,t+0.12); g.gain.setValueAtTime(0.001,t); g.gain.linearRampToValueAtTime(0.9*v,t+0.005); g.gain.exponentialRampToValueAtTime(0.001,t+0.22); o.connect(g).connect(ac.destination); o.start(t); o.stop(t+0.25); }
+  function playSnare(v=1){ ensureAudio(); const t=ac.currentTime; const n=ac.createBufferSource(); n.buffer=snrNoise(); const f=ac.createBiquadFilter(); f.type='highpass'; f.frequency.value=1500; const g=ac.createGain(); g.gain.setValueAtTime(0.001,t); g.gain.linearRampToValueAtTime(0.7*v,t+0.002); g.gain.exponentialRampToValueAtTime(0.001,t+0.12); n.connect(f).connect(g).connect(ac.destination); n.start(t); n.stop(t+0.15); const o=ac.createOscillator(), og=ac.createGain(); o.type='sine'; o.frequency.setValueAtTime(190,t); og.gain.setValueAtTime(0.001,t); og.gain.linearRampToValueAtTime(0.4*v,t+0.001); og.gain.exponentialRampToValueAtTime(0.001,t+0.08); o.connect(og).connect(ac.destination); o.start(t); o.stop(t+0.1); }
+  function setColsCSS(idx,n){ const cols=Array.from({length:n},()=>"minmax(0,1fr)").join(" "); containers(idx).forEach(el=>el.style.setProperty("--cols",cols)); }
+  function labelsFor(sig){ const cfg=TIME_SIGS[sig]; if(cfg.type==="simple"){ const beats=cfg.steps/4,seq=[]; for(let b=1;b<=beats;b++){seq.push(String(b),"e","&","a");} return seq.slice(0,cfg.steps);} return Array.from({length:cfg.steps},(_,i)=>String(i+1)); }
+  function isAccent(sig,i){ return TIME_SIGS[sig].accents.includes(i); }
+  function idxBeatSimple(beat){ return (beat-1)*4; }
+  function renderCell(m,r,c,cell){
+  cell.className="cell"+(isAccent(CURRENT_SIG,c)?" beat-col":"");
+  cell.classList.remove("note","locked","playing"); cell.textContent="";
+  if(r===HH){
+    if(hatLockNext[m][c]) cell.classList.add("locked");
+    if(gridState[m][HH][c]===1){ cell.classList.add("note"); cell.textContent="x"; }
+    if(gridState[m][HH][c]===2){ cell.classList.add("note"); cell.textContent="O"; }
+    if(gridState[m][HH][c]===3){ cell.classList.add("note"); cell.textContent="x>"; }   // ← add this
+  } else if(r===SN){
+    if(gridState[m][SN][c]===1){ cell.classList.add("note"); cell.textContent="●"; }
+    if(gridState[m][SN][c]===2){ cell.classList.add("note"); cell.textContent="(●)"; }
+  } else if(r===BD){
+    if(gridState[m][BD][c]===1){ cell.classList.add("note"); cell.textContent="●"; }
+  }
+}
+  function buildRow(idx,rowKey,rowIdx){ const el=document.getElementById(mEls[idx][rowKey]); el.innerHTML=""; for(let c=0;c<STEPS;c++){ const cell=document.createElement("div"); cell.dataset.m=idx; cell.dataset.row=rowIdx; cell.dataset.col=c; renderCell(idx,rowIdx,c,cell); cell.addEventListener("click",()=>onCellTap(idx,rowIdx,c,cell)); el.appendChild(cell);} }
+  
+  function buildLabels(idx){ const lab=document.getElementById(mEls[idx].label); lab.innerHTML=""; const seq=labelsFor(CURRENT_SIG); seq.forEach((t,i)=>{ const d=document.createElement("div"); d.className="cell"+(isAccent(CURRENT_SIG,i)?" beat":""); d.textContent=t; lab.appendChild(d); }); }
+  function buildMeasure(idx){ setColsCSS(idx,STEPS); buildLabels(idx); buildRow(idx,'hat',HH); buildRow(idx,'snare',SN); buildRow(idx,'kick',BD); }
+  
+  function setHiHatAt(m,c,state){ if(gridState[m][HH][c]===2 && c<STEPS-1){ hatLockNext[m][c+1]=false; } if(state!==2 && hatLockNext[m][c]) return; gridState[m][HH][c]=state; if(state===2 && c<STEPS-1){ gridState[m][HH][c+1]=0; hatLockNext[m][c+1]=true; } const thisCell=document.querySelector(`#${mEls[m].hat} .cell[data-col="${c}"]`); const nextCell=document.querySelector(`#${mEls[m].hat} .cell[data-col="${c+1}"]`); if(thisCell) renderCell(m,HH,c,thisCell); if(nextCell){ renderCell(m,HH,c+1,nextCell); nextCell.classList.toggle('locked',hatLockNext[m][c+1]); } }
+  
+  function onCellTap(m,r,c,cell){ if(r===HH){ if(hatLockNext[m][c]) return; let next = gridState[m][HH][c];
+next = (next===0)?1:(next===1)?3:(next===3)?2:0;
+setHiHatAt(m,c,next);
+ } else if(r===SN){ gridState[m][SN][c]=(gridState[m][SN][c]+1)%3; renderCell(m,r,c,cell); } else if(r===BD){ gridState[m][BD][c]=gridState[m][BD][c]===0?1:0; renderCell(m,r,c,cell); } }
+  
+  function applyDefaultsForSigTo(meas){ gridState[meas]=[Array(STEPS).fill(0),Array(STEPS).fill(0),Array(STEPS).fill(0)]; hatLockNext[meas]=Array(STEPS).fill(false); const cfg=TIME_SIGS[CURRENT_SIG]; if(cfg.type==="compound"){ for(let i=0;i<STEPS;i++) gridState[meas][HH][i]=1; } else { for(let i=0;i<STEPS;i++) if(i%2===0) gridState[meas][HH][i]=1; } if(CURRENT_SIG==="4/4"){ gridState[meas][BD][ idxBeatSimple(1) ]=1; gridState[meas][BD][ idxBeatSimple(3) ]=1; gridState[meas][SN][ idxBeatSimple(2) ]=1; gridState[meas][SN][ idxBeatSimple(4) ]=1; } else if(CURRENT_SIG==="2/4"){ gridState[meas][BD][ idxBeatSimple(1) ]=1; gridState[meas][SN][ idxBeatSimple(2) ]=1; } else if(CURRENT_SIG==="3/4"){ gridState[meas][BD][ idxBeatSimple(1) ]=1; gridState[meas][SN][ idxBeatSimple(2) ]=1; gridState[meas][SN][ idxBeatSimple(3) ]=1; } else if(CURRENT_SIG==="5/4"){ gridState[meas][BD][ idxBeatSimple(1) ]=1; gridState[meas][BD][ idxBeatSimple(3) ]=1; gridState[meas][SN][ idxBeatSimple(2) ]=1; gridState[meas][SN][ idxBeatSimple(4) ]=1; gridState[meas][SN][ idxBeatSimple(5) ]=1; } else if(CURRENT_SIG==="6/8"){ gridState[meas][BD][0]=1; gridState[meas][SN][3]=1; } else if(CURRENT_SIG==="7/8"){ gridState[meas][BD][0]=1; gridState[meas][SN][2]=1; gridState[meas][SN][4]=1; } else if(CURRENT_SIG==="9/8"){ gridState[meas][BD][0]=1; gridState[meas][SN][3]=1; gridState[meas][SN][6]=1; } else if(CURRENT_SIG==="12/8"){ gridState[meas][BD][0]=1; gridState[meas][BD][6]=1; gridState[meas][SN][3]=1; gridState[meas][SN][9]=1; } }
+  
+  function applyDefaultsBoth(){ applyDefaultsForSigTo(0); applyDefaultsForSigTo(1); buildMeasure(0); if(measureCount===2) buildMeasure(1); }
+  
+  function copyBar1ToBar2(){ for(let r=0;r<3;r++) for(let c=0;c<STEPS;c++) gridState[1][r][c]=gridState[0][r][c]; hatLockNext[1].fill(false); for(let c=0;c<STEPS-1;c++) if(gridState[1][HH][c]===2){ gridState[1][HH][c+1]=0; hatLockNext[1][c+1]=true; } }
+  
+  function showMeasure2(show){ const m2=document.getElementById('m2'); const sep=document.getElementById('barSep'); const sys=document.getElementById('system'); m2.style.display=show?'':'none'; sep.style.display=show?'':'none'; document.getElementById('addBarBtn').style.display=show?'none':''; sys.classList.toggle('two',!!show); sys.classList.toggle('stack', !!show && (CURRENT_SIG==="4/4"||CURRENT_SIG==="5/4"||CURRENT_SIG==="12/8")); }
+  
+  document.getElementById('addBarBtn').addEventListener('click', ()=>{ if(measureCount===2) return; copyBar1ToBar2(); buildMeasure(1); showMeasure2(true); measureCount=2; });
+  
+  document.getElementById('removeBarBtn').addEventListener('click', ()=>{ if(measureCount===1) return; document.querySelectorAll('#m2 .cell.playing').forEach(el=>el.classList.remove('playing')); showMeasure2(false); measureCount=1; });
+  
+  function rebuildForSig(sig){ CURRENT_SIG=sig; STEPS=TIME_SIGS[sig].steps; gridState=[[Array(STEPS).fill(0),Array(STEPS).fill(0),Array(STEPS).fill(0)],[Array(STEPS).fill(0),Array(STEPS).fill(0),Array(STEPS).fill(0)]]; hatLockNext=[Array(STEPS).fill(false),Array(STEPS).fill(false)]; setColsCSS(0,STEPS); setColsCSS(1,STEPS); buildMeasure(0); buildMeasure(1); applyDefaultsBoth(); document.querySelectorAll(".measure").forEach(m=>m.classList.toggle("narrow", ["2/4","6/8","7/8"].includes(CURRENT_SIG))); if(intervalId){ clearInterval(intervalId); intervalId=null; playBtn.textContent="Play"; playBtn.setAttribute("aria-pressed","false"); } document.querySelectorAll(".row .cell.playing").forEach(el=>el.classList.remove("playing")); }
+  
+  let intervalId=null, step=0;
+  function totalSteps(){ return STEPS*measureCount; }
+  function setPlayingHighlight(meas,col){ document.querySelectorAll(".row .cell.playing").forEach(el=>el.classList.remove("playing")); const scope=meas===0?"#m1 ":"#m2 "; document.querySelectorAll(`${scope}.row .cell[data-col="${col}"]`).forEach(el=>el.classList.add("playing")); }
+  function getVal(m,row,col){ return (gridState[m] && gridState[m][row] && typeof gridState[m][row][col] !== "undefined") ? gridState[m][row][col] : 0; }
+  function stepSubdivisions(sig){ return TIME_SIGS[sig].type==="simple"?4:2; }
+  function tick(tempo){
+  const tSteps=totalSteps();
+  const meas=(step<STEPS)?0:1;
+  const col=(step%STEPS);
+  setPlayingHighlight(meas,col);
+    
+    // --- GM PATCH: pull live grid settings ---
+function getCurrentSig(){ return document.getElementById('sig')?.value || '4/4'; }
+function getCurrentTempo(){ return +document.getElementById('tempo')?.value || 100; }
+
+
+  const hh=getVal(meas,HH,col);
+  const prevCol=(col-1+STEPS)%STEPS;
+  const wasAcc = getVal(meas,HH,prevCol)===3;
+  if (wasAcc && hh===1) window.__hhDuckScale = 0.65;
+
+  if(hh===1) playHat(false,tempo,CURRENT_SIG,false);
+  if(hh===3) playHat(false,tempo,CURRENT_SIG,true);
+  if(hh===2) playHat(true,tempo,CURRENT_SIG,false);
+
+  const sn=getVal(meas,SN,col);
+  if(sn===1) playSnare(0.90);
+  if(sn===2) playSnare(0.25);
+
+  const bd=getVal(meas,BD,col);
+  if(bd>0) playKick(1.0);
+
+  step=(step+1)%tSteps;
+}
+
+function playGroove(){
+  ensureAudio();
+  if (intervalId) { clearTimeout(intervalId); intervalId = null; }
+  step = 0;
+  setPlayingHighlight(0,0);
+
+  const loop = ()=>{
+    const tempoEl = document.getElementById("tempo") || document.getElementById("admTempo");
+    const tempo = parseInt((tempoEl && tempoEl.value) || "100") || 100;
+    const subdiv = stepSubdivisions(CURRENT_SIG);
+    const delay = (60/tempo)*1000/subdiv;
+    tick(tempo);
+    intervalId = setTimeout(loop, delay);
+  };
+  loop();
+}
+  playBtn.addEventListener("click",()=>{ if(intervalId){ clearInterval(intervalId); intervalId=null; document.querySelectorAll(".row .cell.playing").forEach(el=>el.classList.remove("playing")); playBtn.textContent="Play"; playBtn.setAttribute("aria-pressed","false"); } else { playGroove(); playBtn.textContent="Stop"; playBtn.setAttribute("aria-pressed","true"); } });
+  document.getElementById('trashBtn').addEventListener('click', ()=>{ applyDefaultsBoth(); buildMeasure(0); if(measureCount===2) buildMeasure(1); });
+  document.getElementById('sig').addEventListener('change', e=>{ if(intervalId){ clearInterval(intervalId); intervalId=null; playBtn.textContent="Play"; } rebuildForSig(e.target.value); });
+  window.addEventListener('touchstart', ()=>ensureAudio(), { once:true });
+  rebuildForSig("4/4"); showMeasure2(false);
+
+  /* ---------------- Demo data + search ---------------- */
+  const grooves=[
+    { type:"song", title:"Walk This Way", artist:"Aerosmith", drummer:"Joey Kramer", genre:"Rock", timeSig:"4/4", tempo:"108", H:"2010101010101010", S:"0000100000001000", K:"1000000110100000", slug:"walk-this-way" },
+    { type:"song", title:"Sober", artist:"Tool", drummer:"Danny Carey", genre:"Rock", timeSig:"4/4", tempo:"76", H:"1120112011201120", S:"0000100000001000", K:"1100001100000000", slug:"sober" },
+    { type:"song", title:"We Will Rock You", artist:"Queen", drummer:"Roger Taylor", genre:"Rock", timeSig:"4/4", tempo:"81", H:"1010101010101010", S:"0000100000001000", K:"1010000010100000", slug:"we-will-rock-you" },
+    { type:"song", title:"Beverly Hills", artist:"Weezer", drummer:"Pat Wilson", genre:"Rock", timeSig:"4/4", tempo:"88", H:"1010101010101010", S:"0000100000001000", K:"1010000010100000", slug:"beverly-hills" },
+    { type:"song", title:"Immigrant Song", artist:"Led Zeppelin", drummer:"John Bonham", genre:"Rock", timeSig:"4/4", tempo:"113", H:"1010101010101010", S:"0000100200001002", K:"1011010010110100", slug:"immigrant-song" },
+    { type:"song", title:"When the Levee Breaks", artist:"Led Zeppelin", genre:"Rock", drummer:"John Bonham", timeSig:"4/4", tempo:"76", H:"1010101010101010", S:"0000100000001000", K:"1000000100110000", slug:"when-the-levee-breaks" }
+  ].filter(g => (g.title||"").toLowerCase() !== "back in black"); // ensure removal
+
+  const mergeApprovedIntoGrooves=()=>{
+    const approved=read(KEYS.APPROVED,[]);
+    const sig=g=>[g.title,g.artist,g.H,g.S,g.K].join('|');
+    const have=new Set(grooves.map(sig));
+    approved.forEach(g=>{ if(!have.has(sig(g))) grooves.push(g); });
+  };
+  mergeApprovedIntoGrooves();
+
+  function mapRow(m,r,loose=false){ return gridState[m][r].map(v=>{ if(r===HH) return loose?(v?1:0):v; if(r===SN) return loose?(v?1:0):(v===2?2:(v===1?1:0)); return v?1:0; }).join(''); }
+  function serializeBar1(){ return { exact:{H:mapRow(0,HH,false), S:mapRow(0,SN,false), K:mapRow(0,BD,false)}, loose:{H:mapRow(0,HH,true), S:mapRow(0,SN,true), K:mapRow(0,BD,false)} }; }
+  
+  function matchGrooves(){ const cur=serializeBar1(); const need=TIME_SIGS[CURRENT_SIG]?.steps||16; const out=[]; grooves.forEach(g=>{ const gLen=TIME_SIGS[g.timeSig||'4/4']?.steps||16; if(gLen!==need) return; const exact=g.H===cur.exact.H && g.S===cur.exact.S && g.K===cur.exact.K; const close=!exact && g.H.replace(/2/g,'1')===cur.loose.H && g.S.replace(/2/g,'1')===cur.loose.S && g.K===cur.loose.K; if(exact||close) out.push({...g, match: exact?"Exact":"Close"}); }); return out; }
+  
+  function loadGroove(g){ if(intervalId){ clearInterval(intervalId); intervalId=null; playBtn.textContent="Play"; playBtn.setAttribute("aria-pressed","false"); } const gSig=g.timeSig||"4/4"; if(gSig!==CURRENT_SIG){ document.getElementById('sig').value=gSig; rebuildForSig(gSig); showMeasure2(false); measureCount=1; } else { applyDefaultsBoth(); } if(g.tempo) document.getElementById('tempo').value=String(g.tempo);
+    const write=(row,str)=>{ for(let i=0;i<STEPS;i++){ const ch=str[i]||"0"; if(row===HH) gridState[0][HH][i]=(ch==="2")?2:(ch==="1"?1:0); if(row===SN) gridState[0][SN][i]=(ch==="2")?2:(ch==="1"?1:0); if(row===BD) gridState[0][BD][i]=(ch!=="0")?1:0; } }; write(HH,g.H||""); write(SN,g.S||""); write(BD,g.K||""); hatLockNext[0].fill(false); for(let c=0;c<STEPS-1;c++){ if(gridState[0][HH][c]===2){ gridState[0][HH][c+1]=0; hatLockNext[0][c+1]=true; } } buildMeasure(0); showMeasure2(false); }
+  
+  function handleFindClick(){ const results=document.getElementById("results"); results.innerHTML=""; const matches=matchGrooves(); if(!matches.length){ results.innerHTML=`<div class="card">No matches yet. Try backbeat on 2 & 4 + your kick idea.</div>`; return; } matches.forEach(m=>{ const card=document.createElement('div'); card.className='card'; card.innerHTML=`<div class="rowline"><div><div class="title">${m.title}</div><div>${m.artist|| (m.type==='pattern'?'Pattern':'') }${m.drummer?` • ${m.drummer}`:''} • ${m.genre||''}</div><div class="meta">${m.timeSig||'4/4'} • ${m.tempo||''} BPM • Match: ${m.match}</div></div><div class="act"><button class="btn" data-load>Load</button></div></div>`; card.querySelector('[data-load]').addEventListener('click',()=>loadGroove(m)); results.appendChild(card); }); }
+  
+  document.getElementById("findBtn").addEventListener("click", handleFindClick);
+  const searchInput=document.getElementById('search');
+  searchInput.addEventListener('input',()=>{ const q=searchInput.value.trim().toLowerCase(); const results=document.getElementById('results'); if(!q){ results.innerHTML=""; return; } const hits=grooves.filter(g=>[g.title,g.artist,g.drummer].filter(Boolean).some(s=>s.toLowerCase().includes(q))); results.innerHTML = hits.length ? hits.map(m=>`<div class="card"><div class="rowline"><div><div class="title">${m.title}</div><div>${m.artist|| (m.type==='pattern'?'Pattern':'') }${m.drummer?` • ${m.drummer}`:''} • ${m.genre||''}</div><div class="meta">${m.timeSig||'4/4'} • ${m.tempo||''} BPM</div></div><div class="act"><button class="btn" data-load-title="${m.title}">Load</button></div></div></div>`).join('') : `<div class="card">No results for “${q}”.</div>`; document.querySelectorAll('[data-load-title]').forEach(btn=>{ const t=btn.getAttribute('data-load-title'); const g=grooves.find(x=>x.title===t); btn.addEventListener('click',()=>g && loadGroove(g)); }); });
+
+  /* ---------------- Submit → Pending ---------------- */
+  const submitModal=document.getElementById('submitModal');
+  const submitBtn=document.getElementById('submitBtn');
+  const submitForm=document.getElementById('submitForm');
+  const thanksModal=document.getElementById('thanksModal');
+  const openModal=el=>el?.setAttribute('aria-hidden','false');
+  const closeModal=el=>el?.setAttribute('aria-hidden','true');
+
+  // Open Submit modal always; require login on Send
+  submitBtn?.addEventListener('click', ()=>{ openModal(submitModal); });
+  submitModal?.querySelectorAll('[data-close]').forEach(el=> el.addEventListener('click', ()=>closeModal(submitModal)));
+  thanksModal?.querySelectorAll('[data-close]').forEach(el=> el.addEventListener('click', ()=>closeModal(thanksModal)));
+  window.addEventListener('keydown', e=>{
+    if(e.key==='Escape' && submitModal?.getAttribute('aria-hidden')==='false') closeModal(submitModal);
+    if(e.key==='Escape' && thanksModal?.getAttribute('aria-hidden')==='false') closeModal(thanksModal);
+  });
+  document.getElementById('openPendingNowBtn')?.addEventListener('click', ()=>{
+    closeModal(thanksModal);
+    if(!isAuthed()){ openLogin(); return; }
+    if(!isAdmin()){ toast('Admins only. Ask a moderator.','danger'); return; }
+    renderAdminList(); renderApprovedCache(); showPage('page-admin');
+  });
+
+  function slugify(s){ return (s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)+/g,''); }
+  function newSlug(base){ const core=slugify(base)||'groove'; const rnd=Math.random().toString(36).slice(2,7); return `${core}-${rnd}`; }
+
+  function getPending(){ return read(KEYS.PENDING, []); }
+  function setPending(arr){ write(KEYS.PENDING, arr); }
+  function getApproved(){ return read(KEYS.APPROVED, []); }
+  function setApproved(arr){ write(KEYS.APPROVED, arr); }
+
+  submitForm?.addEventListener('submit', (e)=>{
+    e.preventDefault();
+    if(!isAuthed()){ closeModal(submitModal); openLogin(); return; }
+    const user=currentUser();
+    const fd=new FormData(submitForm);
+    const type=(fd.get('type')||'song').toString();
+    const payload={
+      type,
+      title:(fd.get('title')||'').trim(),
+      artist:(fd.get('artist')||'').trim(),
+      drummer:(fd.get('drummer')||'').trim(),
+      genre:(fd.get('genre')||'').trim(),
+      timeSig:(fd.get('timeSig')||'4/4').trim(),
+      tempo:(fd.get('tempo')||'100').trim(),
+      H: mapRow(0,HH,false), S: mapRow(0,SN,false), K: mapRow(0,BD,false),
+      submittedAt:new Date().toISOString(), by:user?.email||null
+    };
+    
+    // When opening Submit, mirror grid's current sig/tempo into the disabled inputs
+submitBtn?.addEventListener('click', ()=>{
+  const sigEl = document.getElementById('sig');
+  const tempoEl = document.getElementById('tempo');
+  document.getElementById('currentSigShow').value   = sigEl?.value || '4/4';
+  document.getElementById('currentTempoShow').value = tempoEl?.value || '100';
+});
+
+    
+    // --- GM PATCH: force from live grid ---
+const timeSig   = getCurrentSig();
+const tempo = getCurrentTempo();
+    const el = document.getElementById('submitSigTempoDisplay');
+if (el) el.textContent = `${sigNow} • ${bpmNow} BPM`;
+    
+  });
+
+  /* ---------------- Account page + Admin tools ---------------- */
+  function showPage(id){ document.querySelectorAll('.page').forEach(p=>p.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+  function renderAccount(){
+    const u=currentUser(); const email=u?.email||''; const role=findUser(email)?.role||'user';
+    document.getElementById('acctEmail').textContent = email ? `Email: ${email}` : '';
+    document.getElementById('acctRole').textContent  = email ? `Role: ${role}` : '';
+    // my subs
+    const my=document.getElementById('mySubs'); my.innerHTML="";
+    const pend=getPending().filter(x=>x.by===email);
+    const appr=getApproved().filter(x=>x.by===email);
+    const card=(g,st)=>`<div class="card"><div><strong>${g.title}</strong> — ${g.artist|| (g.type==='pattern'?'Pattern':'') } <span class="status badge">${st}</span></div><div class="muted">${g.timeSig||'4/4'} • ${g.tempo||''} BPM</div></div>`;
+    const blocks=[...pend.map(g=>card(g,'Pending')),...appr.map(g=>card(g,'Approved'))];
+    my.innerHTML= blocks.length?blocks.join(''):'<div class="muted">No submissions yet.</div>';
+
+    // admin panel
+    const adminTools=document.getElementById('adminTools');
+    if(role==='admin'){ adminTools.style.display=''; renderUserList(); } else { adminTools.style.display='none'; }
+  }
+  document.getElementById('authBtn').addEventListener('click', ()=>{
+    if(isAuthed()){ renderAccount(); }
+  });
+
+  function renderUserList(){
+    const list=document.getElementById('userList'); const users=getUsers();
+    list.innerHTML = users.length
+      ? users.map(u=>`<div class="card"><strong>${u.email}</strong> <span class="status badge">${u.role}</span>
+          <div style="margin-top:6px;display:flex;gap:6px">
+            <button class="btn small" data-promote="${u.email}">Make Admin</button>
+            <button class="btn small outline" data-demote="${u.email}">Make User</button>
+          </div></div>`).join('')
+      : '<div class="muted">No users yet.</div>';
+    list.querySelectorAll('[data-promote]').forEach(b=> b.addEventListener('click', ()=>setRole(b.getAttribute('data-promote'),'admin')));
+    list.querySelectorAll('[data-demote]').forEach(b=> b.addEventListener('click', ()=>setRole(b.getAttribute('data-demote'),'user')));
+  }
+  function setRole(email, role){
+    const me=currentUser()?.email;
+    // prevent demoting yourself if you are the last admin
+    if(role==='user' && email===me){
+      const admins=getUsers().filter(u=>u.role==='admin');
+      if(admins.length<=1){ toast('You are the last admin. Assign another admin first.','warn'); return; }
+    }
+    const users=getUsers();
+    const idx=users.findIndex(u=>u.email===email);
+    if(idx>=0){ users[idx].role=role; setUsers(users); toast(`${email} is now ${role}.`,'ok'); refreshAuthUI(); renderAccount(); }
+  }
+  document.getElementById('promoteBtn').addEventListener('click', ()=>{
+    const em=document.getElementById('newAdminEmail').value.trim(); if(!em) return;
+    const users=getUsers(); const u=findUser(em);
+    if(u){ setRole(em,'admin'); } else { users.push({email:em, role:'admin'}); setUsers(users); toast(`${em} added as admin.`,'ok'); refreshAuthUI(); renderAccount(); }
+    document.getElementById('newAdminEmail').value='';
+  });
+  document.getElementById('demoteBtn').addEventListener('click', ()=>{
+    const em=document.getElementById('newAdminEmail').value.trim(); if(!em) return; setRole(em,'user'); document.getElementById('newAdminEmail').value='';
+  });
+
+  
+  /* ---------------- Admin page ---------------- */
+  const AHH=0, ASN=1, ABD=2;
+  let A_SIG="4/4", A_STEPS=TIME_SIGS[A_SIG].steps;
+  let A_grid=[Array(A_STEPS).fill(0),Array(A_STEPS).fill(0),Array(A_STEPS).fill(0)];
+  let A_hatLock=Array(A_STEPS).fill(false);
+  let A_interval=null, A_step=0;
+  let lastRejected=null;
+
+  function a_setCols(n){ const cols=Array.from({length:n},()=>"minmax(0,1fr)").join(" "); ["a1-label","a1-hat","a1-snare","a1-kick"].forEach(id=> document.getElementById(id).style.setProperty("--cols", cols)); }
+  function a_labels(){ const lab=document.getElementById("a1-label"); lab.innerHTML=""; const cfg=TIME_SIGS[A_SIG]; const seq=(cfg.type==="simple")?(()=>{const beats=cfg.steps/4,arr=[];for(let b=1;b<=beats;b++){arr.push(String(b),"e","&","a");} return arr.slice(0,cfg.steps);})():Array.from({length:cfg.steps},(_,i)=>String(i+1)); seq.forEach((t,i)=>{ const d=document.createElement("div"); d.className="cell"+(TIME_SIGS[A_SIG].accents.includes(i)?" beat":""); d.textContent=t; lab.appendChild(d); }); }
+  function a_renderCell(r,c,cell){
+  cell.className="cell"+(TIME_SIGS[A_SIG].accents.includes(c)?" beat-col":"");
+  cell.classList.remove("note","locked","playing"); cell.textContent="";
+  if(r===AHH){
+    if(A_hatLock[c]) cell.classList.add("locked");
+    if(A_grid[AHH][c]===1){ cell.classList.add("note"); cell.textContent="x"; }
+    if(A_grid[AHH][c]===2){ cell.classList.add("note"); cell.textContent="O"; }
+    if(A_grid[AHH][c]===3){ cell.classList.add("note"); cell.textContent="x>"; }   // ← add this
+  } else if(r===ASN){
+    if(A_grid[ASN][c]===1){ cell.classList.add("note"); cell.textContent="●"; }
+    if(A_grid[ASN][c]===2){ cell.classList.add("note"); cell.textContent="(●)"; }
+  } else if(r===ABD){
+    if(A_grid[ABD][c]===1){ cell.classList.add("note"); cell.textContent="●"; }
+  }
+}
+
+  function a_buildRow(rowId,rowIdx){ const el=document.getElementById(rowId); el.innerHTML=""; for(let c=0;c<A_STEPS;c++){ const cell=document.createElement("div"); cell.dataset.row=rowIdx; cell.dataset.col=c; a_renderCell(rowIdx,c,cell); cell.addEventListener("click",()=>a_tap(rowIdx,c,cell)); el.appendChild(cell); } }
+  
+  function a_buildMeasure(){ A_STEPS=TIME_SIGS[A_SIG].steps; a_setCols(A_STEPS); a_labels(); a_buildRow("a1-hat",AHH); a_buildRow("a1-snare",ASN); a_buildRow("a1-kick",ABD); }
+  
+  function a_setHat(c,state){ if(A_grid[AHH][c]===2 && c<A_STEPS-1){ A_hatLock[c+1]=false; } if(state!==2 && A_hatLock[c]) return; A_grid[AHH][c]=state; if(state===2 && c<A_STEPS-1){ A_grid[AHH][c+1]=0; A_hatLock[c+1]=true; } const thisCell=document.querySelector(`#a1-hat .cell[data-col="${c}"]`); const nextCell=document.querySelector(`#a1-hat .cell[data-col="${c+1}"]`); if(thisCell) a_renderCell(AHH,c,thisCell); if(nextCell){ a_renderCell(AHH,c+1,nextCell); nextCell.classList.toggle('locked',A_hatLock[c+1]); } }
+  
+  function a_tap(r,c,cell){
+  if(r===AHH){
+    if(A_hatLock[c]) return;
+    let next = A_grid[AHH][c];
+    // off -> x -> x> -> O -> off
+    next = (next===0) ? 1
+         : (next===1) ? 3
+         : (next===3) ? 2
+         : 0;
+    a_setHat(c, next);
+  } else if(r===ASN){
+    A_grid[ASN][c] = (A_grid[ASN][c]+1)%3;
+    a_renderCell(ASN,c,cell);
+  } else if(r===ABD){
+    A_grid[ABD][c] = A_grid[ABD][c]===0 ? 1 : 0;
+    a_renderCell(ABD,c,cell);
+  }
+}
+
+  function a_fromStrings(H,S,K,sig){ A_SIG=sig||"4/4"; A_STEPS=TIME_SIGS[A_SIG].steps; A_grid=[Array(A_STEPS).fill(0),Array(A_STEPS).fill(0),Array(A_STEPS).fill(0)]; A_hatLock=Array(A_STEPS).fill(false);
+    for(let i=0;i<A_STEPS;i++){ const chH=(H||"")[i]||"0", chS=(S||"")[i]||"0", chK=(K||"")[i]||"0"; A_grid[AHH][i]= chH==="2"?2 : chH==="1"?1 : 0; A_grid[ASN][i]= chS==="2"?2 : chS==="1"?1 : 0; A_grid[ABD][i]= chK!=="0"?1:0; if(A_grid[AHH][i]===2 && i+1<A_STEPS){ A_grid[AHH][i+1]=0; A_hatLock[i+1]=true; } } a_buildMeasure(); }
+  
+  function a_toStrings(){ const enc=(arr,kind)=>arr.map(v=>{ if(kind==='H') return v===2?'2':(v?1:0); if(kind==='S') return v===2?'2':(v?1:0); return v?1:0; }).join(''); return { H:enc(A_grid[AHH],'H'), S:enc(A_grid[ASN],'S'), K:enc(A_grid[ABD],'K') }; }
+  
+  function a_stop(){ if(A_interval){ clearTimeout(A_interval); A_interval=null; } A_step=0; $$('#admSystem .playing').forEach(el=>el.classList.remove('playing')); }
+  
+  function a_tick(){
+  const tempo = parseInt($('#admTempo').value) || 100;
+  const subdiv = (TIME_SIGS[A_SIG].type === "simple") ? 4 : 2;
+  const col = A_step % A_STEPS;
+  // visual playhead
+  $$('#admSystem .row .cell').forEach(el => el.classList.remove('playing'));
+  $(`#a1-hat .cell[data-col="${col}"]`)?.classList.add('playing');
+  $(`#a1-snare .cell[data-col="${col}"]`)?.classList.add('playing');
+  $(`#a1-kick .cell[data-col="${col}"]`)?.classList.add('playing');
+
+  // ---- HH with accent + ducking ----
+  // values: 0 off, 1 closed x, 2 open O, 3 accented closed x>
+  const hh = A_grid[AHH][col];
+  const prevCol = (col - 1 + A_STEPS) % A_STEPS;
+  const wasAcc  = A_grid[AHH][prevCol] === 3;
+
+  // one-shot duck on a normal closed after an accent
+  if (wasAcc && hh === 1) window.__hhDuckScale = 0.40; // lower = more duck (e.g. 0.45 / 0.40)
+
+  if (hh === 1) playHat(false, tempo, A_SIG, false);
+  if (hh === 3) playHat(false, tempo, A_SIG, true);
+  if (hh === 2) playHat(true,  tempo, A_SIG, false);
+
+  // SN + BD as before
+  const sn = A_grid[ASN][col];
+  if (sn === 1) playSnare(0.9);
+  if (sn === 2) playSnare(0.13);
+
+  const bd = A_grid[ABD][col];
+  if (bd > 0) playKick(1.0);
+
+  // step + timing
+  A_step = (A_step + 1) % A_STEPS;
+  return (60/tempo) * 1000 / subdiv;
+}
+
+
+  function renderAdminList(){ const list=document.getElementById('adminList'); const items=getPending(); list.innerHTML=items.length?'':'<div class="admin-item">No pending grooves.</div>'; items.forEach((g,idx)=>{ const it=document.createElement('div'); it.className='admin-item'; it.dataset.idx=idx;
+      it.innerHTML=`<div class="t">${g.title||'(untitled)'}</div><div class="sub">${g.type==='pattern'?'Pattern':(g.artist||'')}</div><div class="sub">${g.timeSig||'4/4'} • ${g.tempo||''} BPM</div>`; it.addEventListener('click', ()=>loadAdmin(idx)); list.appendChild(it); }); if(items.length) loadAdmin(0); }
+  
+  function renderApprovedCache(){ const cache=document.getElementById('approvedCache'); const arr=getApproved(); cache.innerHTML = arr.length ? arr.slice(0,20).map(g=>`<div class="approved-item"><strong>${g.title}</strong> — ${g.artist|| (g.type==='pattern'?'Pattern':'') } <span class="muted">(${g.timeSig||'4/4'} • ${g.tempo||''} BPM)</span></div>`).join('') : '<div class="muted">No approvals yet.</div>'; }
+  
+  function loadAdmin(idx){ const items=getPending(); const g=items[idx]; if(!g) return; $('#admType').value=g.type||'song'; $('#admArtist').value=g.artist||''; $('#admTitle').value=g.title||''; $('#admDrummer').value=g.drummer||''; $('#admGenre').value=g.genre||''; $('#admSig').value=g.timeSig||'4/4'; $('#admTempo').value=g.tempo||'100'; a_fromStrings(g.H,g.S,g.K,$('#admSig').value);
+    $('#admSig').onchange=(e)=>{ A_SIG=e.target.value; a_fromStrings(a_toStrings().H,a_toStrings().S,a_toStrings().K,A_SIG); };
+    $('#admSave').onclick=()=>{ if(!isAdmin()){ toast('Admins only.','danger'); return; } const gridStr=a_toStrings(); const edit={ type:$('#admType').value, artist:$('#admArtist').value.trim(), title:$('#admTitle').value.trim(), drummer:$('#admDrummer').value.trim(), genre:$('#admGenre').value.trim(), timeSig:$('#admSig').value, tempo:$('#admTempo').value, H:gridStr.H, S:gridStr.S, K:gridStr.K }; const arr=getPending(); arr[idx]={...arr[idx],...edit}; setPending(arr); toast('Saved','ok'); renderAdminList(); };
+    $('#admApprove').onclick=()=>{ if(!isAdmin()){ toast('Admins only.','danger'); return; } const arr=getPending(); const cur=arr[idx]; if(!cur) return; const approved=getApproved(); const sig=x=>[x.title,x.artist,x.H,x.S,x.K].join('|'); const have=new Set(approved.map(sig)); const slug = cur.slug || newSlug(cur.title || (cur.artist ? cur.artist + ' groove' : 'groove')); const record={...cur, slug, approvedAt:Date.now()}; if(!have.has(sig(record))) approved.unshift(record); setApproved(approved); arr.splice(idx,1); setPending(arr); a_stop(); renderAdminList(); renderApprovedCache(); mergeApprovedIntoGrooves(); renderLibrary(); toast('Approved','ok'); };
+    $('#admReject').onclick=()=>{ if(!isAdmin()){ toast('Admins only.','danger'); return; } if(!confirm('Reject this submission?')) return;
+      const arr=getPending(); const removed=arr.splice(idx,1)[0]; setPending(arr); a_stop(); renderAdminList();
+      lastRejected = removed;
+      toast('Rejected', 'warn', ()=>{ if(lastRejected){ const cur=getPending(); cur.unshift(lastRejected); setPending(cur); renderAdminList(); lastRejected=null; } });
+    };
+  }
+
+  /* ---------------- Groove Library ---------------- */
+  function allApproved(){ const approved=getApproved(); const seed=grooves.filter(g=>!g.submittedAt); // seed ≈ built-ins
+    // ensure slugs on approved
+    approved.forEach(g=>{ if(!g.slug){ g.slug=newSlug(g.title|| (g.artist?g.artist+'-groove':'groove')); } });
+    setApproved(approved);
+    return [...approved, ...seed];
+  }
+  function copyLink(slug){
+    const url = `${location.origin}${location.pathname}#g=${encodeURIComponent(slug)}`;
+    navigator.clipboard?.writeText(url).then(()=>toast('Link copied','ok')).catch(()=>toast('Copy failed','warn'));
+  }
+
+  function renderLibrary(){
+    const grid=document.getElementById('libGrid');
+    const q = (document.getElementById('libSearch').value||'').toLowerCase();
+    const type = document.getElementById('libType').value;
+    const sig = document.getElementById('libSig').value;
+    const min = parseInt(document.getElementById('libMin').value||'0')||0;
+    const max = parseInt(document.getElementById('libMax').value||'999')||999;
+    const sort = document.getElementById('libSort').value;
+
+    let rows = allApproved().filter(g=>{
+      const matchQ = !q || [g.title,g.artist,g.drummer].filter(Boolean).some(s=>s.toLowerCase().includes(q));
+      const matchT = type==='all' || (g.type||'song')===type;
+      const matchS = sig==='all' || (g.timeSig||'4/4')===sig;
+      const bpm = parseInt(g.tempo||'0')||0;
+      const matchB = bpm>=min && bpm<=max;
+      return matchQ && matchT && matchS && matchB;
+    });
+
+    // Default Library filter to "Songs" on first load and when you navigate there
+(function(){
+  const goLibrary = () => {
+    const typeSel = document.getElementById('libType');
+    if (typeSel) typeSel.value = 'song';   // <- default
+    const sigSel  = document.getElementById('libSig');
+    if (sigSel && sigSel.value === 'all') {/* keep Any Sig */} // no-op
+    if (typeof renderLibrary === 'function') renderLibrary();
+  };
+
+  // when you click "Groove Library"
+  document.getElementById('libraryBtn')?.addEventListener('click', goLibrary);
+
+  // if you programmatically show the page:
+  const _showPage = window.showPage;
+  window.showPage = function(id){
+    _showPage?.(id);
+    if (id === 'page-library') goLibrary();
+  };
+
+  // also set default once after DOM load (optional)
+  document.addEventListener('DOMContentLoaded', ()=>{
+    if (document.getElementById('page-library')?.classList.contains('active')) goLibrary();
+  });
+
+  // Make Reset align with this default
+  const resetBtn = document.getElementById('libReset');
+  if (resetBtn) resetBtn.addEventListener('click', ()=>{
+    document.getElementById('libSearch').value = '';
+    document.getElementById('libType').value   = 'song';  // <- keep Songs
+    document.getElementById('libSig').value    = 'all';
+    document.getElementById('libMin').value    = '';
+    document.getElementById('libMax').value    = '';
+    document.getElementById('libSort').value   = 'new';
+    renderLibrary?.();
+  });
+})();
+
+    
+    rows.sort((a,b)=>{
+      if(sort==='title') return (a.title||'').localeCompare(b.title||'');
+      if(sort==='tempo') return (parseInt(a.tempo||'0')||0) - (parseInt(b.tempo||'0')||0);
+      // newest
+      return (b.approvedAt||0) - (a.approvedAt||0);
+    });
+
+    grid.innerHTML = rows.length ? rows.map(g=>{
+      const who = g.type==='pattern' ? 'Pattern' : (g.artist || '');
+      const sig = g.timeSig || '4/4';
+      const bpm = g.tempo || '';
+      const chip = `<span class="chip">${g.type==='pattern'?'Pattern':'Song'}</span>`;
+      return `<div class="lib-card">
+        <h4>${g.title||'(untitled)'}</h4>
+        <div class="lib-meta">${who}${g.drummer?` • ${g.drummer}`:''}</div>
+        <div class="lib-meta">${sig} • ${bpm} BPM</div>
+        <div class="lib-actions">
+          <button class="btn small" data-load-slug="${g.slug||''}">Load</button>
+          <button class="btn small outline" data-copy="${g.slug||''}">Copy Link</button>
+          ${chip}
+        </div>
+      </div>`;
+    }).join('') : '<div class="muted" style="text-align:center">No grooves yet. Approve some or clear filters.</div>';
+
+    grid.querySelectorAll('[data-load-slug]').forEach(b=>{
+      const slug=b.getAttribute('data-load-slug');
+      b.addEventListener('click', ()=>{
+        const g = allApproved().find(x=>x.slug===slug);
+        if(g){ loadGroove(g); showPage('page-builder'); }
+      });
+    });
+    grid.querySelectorAll('[data-copy]').forEach(b=>{
+      b.addEventListener('click', ()=> copyLink(b.getAttribute('data-copy')));
+    });
+  }
+
+  ['libSearch','libType','libSig','libMin','libMax','libSort'].forEach(id=>{
+    const el=document.getElementById(id);
+    el?.addEventListener('input', renderLibrary);
+    el?.addEventListener('change', renderLibrary);
+  });
+  document.getElementById('libReset').addEventListener('click', ()=>{
+    document.getElementById('libSearch').value='';
+    document.getElementById('libType').value='all';
+    document.getElementById('libSig').value='4/4';
+    document.getElementById('libMin').value='';
+    document.getElementById('libMax').value='';
+    document.getElementById('libSort').value='new';
+    renderLibrary();
+  });
+
+  /* ---------------- Footer links modals ---------------- */
+const info = {
+  tos: `
+    <h3>Terms of Service</h3>
+    <div style="max-height:55vh; overflow:auto; line-height:1.5; padding:12px; border:1px solid #ddd; border-radius:8px; background:#fff;">
+      <p><strong>GrooveMatch – Terms of Service</strong><br>
+      <em>Effective Date: 8/18/25</em></p>
+
+      <p>Welcome to GrooveMatch (“we,” “our,” “us”). These Terms of Service (“Terms”) govern your access to and use of the GrooveMatch application, website, and related services (collectively, the “Service”). By creating an account, submitting grooves, or otherwise using GrooveMatch, you agree to these Terms. If you do not agree, do not use the Service.</p>
+
+      <p><strong>1. Eligibility</strong><br>
+      You must be at least 13 years old to use GrooveMatch.<br>
+      If you are under 18, you may only use GrooveMatch with permission from a parent or legal guardian.<br>
+      By using GrooveMatch, you represent that you meet these requirements.</p>
+
+      <p><strong>2. Accounts</strong><br>
+      To access certain features, you must register for an account.<br>
+      You are responsible for safeguarding your account credentials and for all activity under your account.<br>
+      You agree to provide accurate, complete information when creating an account.<br>
+      We reserve the right to suspend or terminate accounts that violate these Terms.</p>
+
+      <p><strong>3. User Content</strong><br>
+      Ownership: You retain ownership of any grooves, submissions, or other content (“User Content”) you create and submit.<br>
+      License to Us: By submitting User Content, you grant GrooveMatch a worldwide, non-exclusive, royalty-free license to store, display, modify, and distribute your User Content within the Service for the purpose of operating and improving the platform.<br>
+      Responsibility: You are solely responsible for the content you submit and for ensuring it does not violate any laws, copyright, or third-party rights.</p>
+
+      <p><strong>4. Community Guidelines</strong><br>
+      By using GrooveMatch, you agree not to:<br>
+      – Upload or distribute harmful, offensive, or illegal content.<br>
+      – Spam, harass, or impersonate others.<br>
+      – Interfere with or disrupt the Service, servers, or networks.<br>
+      – Attempt to gain unauthorized access to other accounts or the Service.<br>
+      Violations may result in removal of content, suspension, or permanent account termination.</p>
+
+      <p><strong>5. Moderation & Admin Rights</strong><br>
+      GrooveMatch may allow certain users (“Admins/Moderators”) to review, approve, or remove User Content.<br>
+      Admin/Moderator actions are discretionary and intended to maintain the quality of the Service.<br>
+      GrooveMatch reserves the right to override or enforce moderation decisions as needed.</p>
+
+      <p><strong>6. Service Changes & Availability</strong><br>
+      We may modify, suspend, or discontinue any part of the Service at any time without notice.<br>
+      We are not liable for downtime, errors, or loss of data resulting from use of the Service.</p>
+
+      <p><strong>7. Intellectual Property</strong><br>
+      The GrooveMatch platform, code, and design are owned by us and protected by copyright and other laws.<br>
+      You may not copy, reverse-engineer, or redistribute the Service without our permission.</p>
+
+      <p><strong>8. Termination</strong><br>
+      We may suspend or terminate your access to the Service at any time if you violate these Terms or for any other reason at our discretion.<br>
+      You may stop using GrooveMatch at any time and request deletion of your account data.</p>
+
+      <p><strong>9. Disclaimers</strong><br>
+      The Service is provided “AS IS” and “AS AVAILABLE” without warranties of any kind.<br>
+      We disclaim all liability for damages resulting from use or inability to use the Service.</p>
+
+      <p><strong>10. Limitation of Liability</strong><br>
+      To the maximum extent permitted by law:<br>
+      GrooveMatch and its owners are not liable for indirect, incidental, or consequential damages arising from use of the Service.<br>
+      Our total liability for any claim related to the Service will not exceed $50.</p>
+
+      <p><strong>11. Governing Law</strong><br>
+      These Terms are governed by the laws of the state of Tennessee, without regard to conflict of law principles.</p>
+
+      <p><strong>12. Changes to Terms</strong><br>
+      We may update these Terms from time to time. We will post the updated Terms with a new “Effective Date.” Continued use of the Service after changes means you accept the new Terms.</p>
+
+      <p><strong>13. Contact Us</strong><br>
+      For questions or concerns about these Terms, contact:<br>
+      Barret Griffy / GrooveMatch<br>
+      Email: insanedrummer89@gmail.com</p>
+    </div>
+  `,
+
+  how: `
+    <h3>How to Add Your Grooves</h3>
+    <ol>
+      <li>Build a groove from a song or just a killer pattern.</li>
+      <li>Click “Submit Groove”. Fill in song info or give your pattern a name.</li>
+      <li>Song Grooves: Moderators review and approve. Patterns: Go straight to the Groove Library</li>
+    </ol>
+  `,
+
+  contact: `
+    <h3>Contact Us</h3>
+    <p>Email: <a href="mailto:insanedrummer89@gmail.com">insanedrummer89@gmail.com</a></p>
+  `,
+
+  privacy: `
+    <h3>Privacy Policy</h3>
+    <div style="max-height:55vh; overflow:auto; line-height:1.5; padding:12px; border:1px solid #ddd; border-radius:8px; background:#fff;">
+      <p><strong>GrooveMatch – Privacy Policy</strong><br>
+      <em>Effective Date: 8/18/25</em></p>
+
+      <p>Your privacy is important to us. This Privacy Policy explains what data we collect, how we use it, and your rights regarding that data.</p>
+
+      <p><strong>1. Information We Collect</strong><br>
+      – Account information (email, username).<br>
+      – Grooves, submissions, or other content you upload.<br>
+      – Basic usage data (device type, browser, app interactions).</p>
+
+      <p><strong>2. How We Use Information</strong><br>
+      – To provide and improve GrooveMatch.<br>
+      – To moderate and display grooves in the library.<br>
+      – To communicate with you (e.g., account issues, updates).</p>
+
+      <p><strong>3. Sharing of Information</strong><br>
+      – We do not sell your data.<br>
+      – We may share limited data with service providers who support GrooveMatch (e.g., hosting).<br>
+      – We may disclose data if required by law or to protect our rights.</p>
+
+      <p><strong>4. Cookies & Tracking</strong><br>
+      GrooveMatch may use simple cookies or local storage for login sessions and saving your groove drafts. We do not track you across other websites.</p>
+
+      <p><strong>5. Data Retention</strong><br>
+      We retain your submissions and account information until you request deletion or your account is terminated.</p>
+
+      <p><strong>6. Your Rights</strong><br>
+      You can request account deletion or data export by contacting us.<br>
+      You may also opt out of non-essential communications.</p>
+
+      <p><strong>7. Children’s Privacy</strong><br>
+      GrooveMatch is not intended for children under 13. If we discover we have collected information from a child under 13, we will delete it.</p>
+
+      <p><strong>8. Changes</strong><br>
+      We may update this Privacy Policy from time to time. The new effective date will always be posted here.</p>
+
+      <p><strong>9. Contact</strong><br>
+      Questions? Contact us at:<br>
+      Barret Griffy / GrooveMatch<br>
+      Email: insanedrummer89@gmail.com</p>
+    </div>
+  `,
+
+  about: `
+    <h3>About GrooveMatch</h3>
+    <p>GrooveMatch was built with one simple mission: to bring drummers together. 
+    As a drummer and music educator for over a decade, I wanted a place where grooves could live publicly, be shared, and inspire others. 
+    Whether you’re a beginner just finding your pocket or a pro looking for fresh ideas, GrooveMatch is designed to connect drummers through rhythm.</p>
+
+    <p>Every groove in the library has been shared by real players and reviewed by our moderators to keep the quality high. 
+    No paywalls, no gimmicks — just a space to learn, share, and celebrate drumming.</p>
+
+    <p>We believe grooves are universal, and GrooveMatch exists to make them accessible to everyone. 
+    This is more than an app — it’s a community built by drummers, for drummers.</p>
+  `
+};
+  function openInfo(key){
+    let el=document.getElementById('infoModal');
+    if(!el){
+      el=document.createElement('div');
+      el.className='modal'; el.id='infoModal'; el.setAttribute('aria-hidden','true');
+      el.innerHTML=`<div class="modal-backdrop" data-close></div>
+        <div class="modal-card"><div class="modal-head"><h2>Info</h2><button class="icon-btn close" data-close aria-label="Close">✕</button></div>
+        <div class="modal-body" id="infoBody" style="text-align:left"></div></div>`;
+      document.body.appendChild(el);
+      el.querySelectorAll('[data-close]').forEach(btn=> btn.addEventListener('click', ()=> el.setAttribute('aria-hidden','true')));
+    }
+    document.getElementById('infoBody').innerHTML = info[key] || '<p>Not found.</p>';
+    el.setAttribute('aria-hidden','false');
+  }
+  document.querySelectorAll('footer [data-open]').forEach(a=>{
+    a.addEventListener('click', (e)=>{ e.preventDefault(); openInfo(a.getAttribute('data-open')); });
+  });
+
+  // Deep link: #g=slug
+  function handleHash(){
+    const m = location.hash.match(/g=([^&]+)/);
+    if(m){ const slug=decodeURIComponent(m[1]); const g = allApproved().find(x=>x.slug===slug); if(g){ loadGroove(g); showPage('page-builder'); } }
+  }
+  window.addEventListener('hashchange', handleHash);
+
+  // Initial UI sync
+  refreshAuthUI();
+  renderLibrary();
+  handleHash();
+  
+  // Ensure Logout really sits last in the header row
+document.addEventListener('DOMContentLoaded', () => {
+  const nav = document.querySelector('.header-actions');
+  const logout = document.getElementById('logoutBtn');
+  if (nav && logout) nav.appendChild(logout);
+});
+
+})();
+</script>
+
+<!-- GM PATCH v3 -->
+<script>
+(function(){
+  function ready(fn){ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', fn); else fn(); }
+  const $=(q,r=document)=>r.querySelector(q);
+  const $$=(q,r=document)=>Array.from(r.querySelectorAll(q));
+  const read=(k,f)=>{ try{ const v=JSON.parse(localStorage.getItem(k)||'null'); return v??f; }catch(e){ return f; } };
+  const write=(k,v)=>localStorage.setItem(k, JSON.stringify(v));
+
+  // 1) If current user is admin/mod, move "Account" next to "Pending Grooves"
+  ready(function(){
+    const roleTxt = ($('.who')?.textContent||'').toLowerCase();
+    const isStaff = /admin|mod|moderator/.test(roleTxt) || (read('gm_session',{})||{}).role==='admin' || (read('gm_session',{})||{}).role==='mod';
+    const nav = document.querySelector('.header-actions, nav');
+    if(!nav) return;
+    const btns = $$('a,button', nav);
+    const pending = btns.find(el=>/pending\s+grooves/i.test(el.textContent||''));
+    const account = btns.find(el=>/account/i.test(el.textContent||''));
+    if(isStaff && pending && account && account !== pending.nextSibling){
+      nav.insertBefore(account, pending.nextSibling);
+    }
+  });
+
+  // 3) "My Submissions" population + Admin tools overhaul
+  ready(function(){
+    // My Submissions builder
+    const host = document.getElementById('mySubs') || document.getElementById('my-submissions') || document.querySelector('[data-role="my-submissions"]');
+    if(host){
+      const keysApproved = ['gm_approved_submissions','approvedGrooves'];
+      const keysPending  = ['gm_pending_submissions','pendingGrooves'];
+      const keysMine     = ['gm_my_submissions','gm_submissions'];
+      let approved = [], pending = [], mine = [];
+      keysApproved.forEach(k=>{ const a=read(k,[]); if(Array.isArray(a)) approved = approved.concat(a); });
+      keysPending.forEach(k=>{ const a=read(k,[]); if(Array.isArray(a)) pending = pending.concat(a); });
+      keysMine.forEach(k=>{ const a=read(k,[]); if(Array.isArray(a)) mine = mine.concat(a); });
+
+      let list = mine.length ? mine : approved;
+      const seen = new Set();
+      list = list.filter(g=>{
+        const sig = `${g?.title||''}|${g?.artist||''}|${g?.H||''}|${g?.S||''}|${g?.K||''}`;
+        if(seen.has(sig)) return false;
+        seen.add(sig); return true;
+      });
+
+      const card = (g,st)=>`<div class="gm-card"><div><strong>${g?.title||'(untitled)'}</strong> — ${g?.artist||''} <span class="gm-badge">${st}</span></div><div class="muted">${g?.timeSig||'4/4'} • ${g?.tempo||''} BPM</div></div>`;
+      const blocks = list.map(g=>{
+        const isAppr = approved.some(a => (a?.title||'')===(g?.title||'') && (a?.artist||'')===(g?.artist||''));
+        const isPend = pending.some(p => (p?.title||'')===(g?.title||'') && (p?.artist||'')===(g?.artist||''));
+        return card(g, isAppr ? 'Approved' : (isPend ? 'Pending' : 'Submitted'));
+      });
+      host.innerHTML = blocks.length ? blocks.join('') : '<div class="muted">No submissions yet.</div>';
+    }
+
+    // Admin tools: remove "Make user"; show "Promote" or "Delete"
+    const userList = document.getElementById('userList');
+    if(userList){
+      function renderControls(){
+        userList.querySelectorAll('.card').forEach(card=>{
+          [...card.querySelectorAll('button')].forEach(b=>{
+            if(/make\s*user/i.test(b.textContent||'')) b.style.display='none';
+            if(/make\s*admin/i.test(b.textContent||'')) b.style.display='none';
+          });
+          if(card.querySelector('[data-gm-controls]')) return;
+          const email = (card.querySelector('strong')||{}).textContent || (card.querySelector('.email')||{}).textContent || '';
+          const roleTxt = (card.querySelector('.status,.badge')||{}).textContent || '';
+          const isAdmin = /admin/i.test(roleTxt);
+          const ctr = document.createElement('div');
+          ctr.setAttribute('data-gm-controls','');
+          ctr.style.marginTop = '6px';
+          ctr.style.display = 'flex';
+          ctr.style.gap = '6px';
+          const btnPromote = document.createElement('button');
+          btnPromote.className = 'btn small';
+          btnPromote.textContent = 'Promote';
+          const btnDelete = document.createElement('button');
+          btnDelete.className = 'btn small outline';
+          btnDelete.textContent = 'Delete';
+          if(!isAdmin) ctr.appendChild(btnPromote);
+          ctr.appendChild(btnDelete);
+          card.appendChild(ctr);
+
+          btnPromote.addEventListener('click', ()=>{
+            if(typeof window.setRole === 'function') window.setRole(email, 'admin');
+            else {
+              const users = read('gm_users', []);
+              const idx = users.findIndex(u=>u?.email===email);
+              if(idx>=0){ users[idx].role='admin'; write('gm_users', users); }
+            }
+            setTimeout(()=>{ renderControls(); }, 100);
+          });
+          btnDelete.addEventListener('click', ()=>{
+            if(typeof window.removeUser === 'function') window.removeUser(email);
+            else {
+              const users = read('gm_users', []);
+              write('gm_users', users.filter(u=>u?.email!==email));
+            }
+            setTimeout(()=>{ renderControls(); }, 100);
+          });
+        });
+      }
+      const obs = new MutationObserver(()=>renderControls());
+      obs.observe(userList, { childList:true, subtree:true });
+      renderControls();
+    }
+  });
+
+  // 4) Submit Groove: remove ghost placeholders
+  ready(function(){
+    const form = document.getElementById('submitForm') || document.querySelector('form#submit');
+    if(!form) return;
+    form.querySelectorAll('input[placeholder], textarea[placeholder]').forEach(el=> el.removeAttribute('placeholder'));
+  });
+
+  // 6) Pending: container auto-grow & scroll to newest
+  ready(function(){
+    const list = document.getElementById('adminList') || document.querySelector('.recent-approvals, .approvals');
+    if(!list) return;
+    const obs = new MutationObserver(()=>{
+      list.style.maxHeight='none';
+      list.style.overflow='visible';
+      const last = list.lastElementChild;
+      if(last && last.scrollIntoView) last.scrollIntoView({behavior:'instant', block:'end'});
+    });
+    obs.observe(list, { childList:true });
+  });
+})();
+</script>
+<script>
+  
+// Ultra-minimal: add admin-only delete "×" button to Library cards without touching renderLibrary()
+(function(){
+  function isStaff(){ return (typeof isAdmin==='function') && isAdmin(); }
+  if(!isStaff()) return; // No UI change for non-admins
+
+  function addDeleteButtons(root){
+    (root || document).querySelectorAll('#libGrid .lib-card').forEach(card=>{
+      if(card.querySelector('[data-del]')) return; // already added
+      // Try to discover the groove slug from existing buttons
+      const loadBtn = card.querySelector('[data-load-slug]');
+      const slug = loadBtn ? loadBtn.getAttribute('data-load-slug') : '';
+      const btn = document.createElement('button');
+      btn.className = 'icon-btn';
+      btn.setAttribute('data-del', slug || '');
+      btn.title = 'Delete';
+      btn.textContent = '×';
+      Object.assign(btn.style, {position:'absolute', left:'6px', top:'6px', zIndex:'2', padding:'2px 6px', borderRadius:'6px'});
+      card.style.position = card.style.position || 'relative';
+      card.prepend(btn);
+    });
+  }
+  
+<script>
+(function(){
+  const typeEl = document.getElementById('submitType');
+  const detail = document.getElementById('detailFields');
+
+  function syncFields(){
+    if(!detail) return;
+    const isPattern = typeEl.value === 'pattern';
+    detail.style.display = isPattern ? 'none' : '';
+    // disable inputs so browser doesn’t require them when hidden
+    detail.querySelectorAll('input').forEach(el=>{
+      if(isPattern){
+        el.dataset._wasRequired = el.required ? '1' : '';
+        el.required = false;
+        el.disabled = true;
+      } else {
+        if(el.dataset._wasRequired === '1') el.required = true;
+        el.disabled = false;
+      }
+    });
+  }
+
+  typeEl.addEventListener('change', syncFields);
+  syncFields(); // run on load
+})();
+
 /* =========================================================
    GROOVEMATCH — CLEAN OVERRIDE (no duplicate bindings)
    Paste this LAST in your JS (or include as last external asset)
