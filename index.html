@@ -208,37 +208,63 @@
 <!-- Submit Groove Modal -->
 <div id="submitModal" class="modal" aria-hidden="true" aria-labelledby="submitTitle" role="dialog">
   <div class="modal-backdrop" data-close></div>
+
   <div class="modal-card" role="document">
     <div class="modal-head">
       <h2 id="submitTitle">Submit Groove</h2>
       <button class="icon-btn close" data-close aria-label="Close">✕</button>
     </div>
-    <form id="submitForm" class="modal-body">
-     <div class="grid3">
-  <label>Type
-    <select name="type" id="submitType">
-      <option value="song" selected>Song</option>
-      <option value="pattern">Pattern</option>
-    </select>
-  </label>
-  <label>Time Sig
-   <input id="currentSigShow" type="text" disabled />
-  </label>
-  <label>Tempo
-    <input id="currentTempoShow" type="text" disabled />
-  </label>
-</div>
-      <!-- detail fields wrapper -->
-      <div id="detailFields">
+
+    <form id="submitForm" class="modal-body" onsubmit="return false;">
+      <!-- Top row: type / mirrored sig / mirrored tempo -->
+      <div class="grid3">
+        <label>
+          <span>Type</span>
+          <select id="submitType" name="type" autocomplete="off">
+            <option value="song" selected>Song</option>
+            <option value="pattern">Pattern</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Time Sig</span>
+          <input id="currentSigShow" type="text" disabled aria-readonly="true" />
+        </label>
+
+        <label>
+          <span>Tempo</span>
+          <input id="currentTempoShow" type="text" disabled aria-readonly="true" />
+        </label>
+      </div>
+
+      <!-- Details (artist/title/drummer/genre) -->
+      <div id="detailFields" style="margin-top:10px">
         <div class="grid2">
-          <label>Artist <input name="artist"</label>
-          <label>Song Title <input name="title"></label>
-          <label>Drummer <input name="drummer"</label>
-          <label>Genre <input name="genre"</label>
+          <label>
+            <span>Artist</span>
+            <input name="artist" id="sg-artist" autocomplete="off" />
+          </label>
+
+          <label>
+            <span>Song Title</span>
+            <input name="title" id="sg-title" autocomplete="off" />
+          </label>
+
+          <label>
+            <span>Drummer</span>
+            <input name="drummer" id="sg-drummer" autocomplete="off" />
+          </label>
+
+          <label>
+            <span>Genre</span>
+            <input name="genre" id="sg-genre" autocomplete="off" />
+          </label>
         </div>
       </div>
+
       <div class="modal-actions">
-        <button class="btn" type="submit">Send</button>
+        <button class="btn outline" type="button" data-close>Cancel</button>
+        <button class="btn" type="submit" id="submitGrooveBtn">Send</button>
       </div>
     </form>
   </div>
