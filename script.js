@@ -740,7 +740,7 @@ function loadGroove(g){
       const slug = newSlug(payload.title || 'pattern');
       appr.unshift({...payload, slug, approvedAt: Date.now()});
       setApproved(appr);
-      toast('Thanks for the Sick Groove!','ok');
+      toast('Thanks for the Sick Groove!','info');
       closeModal(submitModal);
       openModal(thanksModal);
       renderLibrary();
@@ -748,7 +748,7 @@ function loadGroove(g){
       const arr = getPending();
       arr.unshift(payload);
       setPending(arr);
-      toast('Submitted for review!','ok');
+      toast('Submitted for review!','info');
       closeModal(submitModal);
       openModal(thanksModal);
     }
