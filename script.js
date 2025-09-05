@@ -1303,7 +1303,7 @@ document.addEventListener('DOMContentLoaded', renderAccount);
     patWrap.id='patternTitleWrap';
     patWrap.style.cssText='display:none;margin-top:8px';
     patWrap.innerHTML = `<label>Pattern Title (optional)
-      <input id="patternTitle" name="pattitle" placeholder="e.g. Half-time shuffle"></label>`;
+      <input id="patternTitle" name="pattitle" </label>`;
     const detail = $('#detailFields'); (detail?.parentNode||form).insertBefore(patWrap, (detail?.nextSibling||null));
   }
   let hiddenTitle = $('#patternTitleHidden');
