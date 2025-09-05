@@ -6,19 +6,20 @@
 }
 
 /* --- Toasts --- */
-.gm-toast.info {
-  background-color: var(--gm-blue) !important;
-  border-color: var(--gm-blue) !important;
+.gm-toast.info{
+  background: var(--blue) !important;
+  border-color: var(--blue) !important;
   color: #fff !important;
 }
-.gm-toast.ok {
-  background-color: #16a34a !important;  /* keep success green */
+.gm-toast.ok{
+  background: #16a34a !important;   /* keep success green */
   border-color: #16a34a !important;
   color: #fff !important;
 }
-.gm-toast.warn { background:#f59e0b !important; border-color:#f59e0b !important; color:#fff !important; }
-.gm-toast.danger { background:#ef4444 !important; border-color:#ef4444 !important; color:#fff !important; }
-.gm-toast .x { color: #fff !important; }
+.gm-toast.warn{ background:#f59e0b !important; border-color:#f59e0b !important; color:#fff !important; }
+.gm-toast.danger{ background:#ef4444 !important; border-color:#ef4444 !important; color:#fff !important; }
+.gm-toast .x{ color:#fff !important; }
+
 
 /* --- Primary Buttons (Submit Groove, Play, Library, etc.) --- */
 .btn.primary,
