@@ -83,3 +83,85 @@ a:hover { color: var(--gm-blue-hov) !important; }
   outline-color: var(--gm-blue) !important;
   box-shadow: 0 0 0 2px rgba(2,107,199,0.35) !important;
 }
+
+/* ===== Submit Groove modal — polish ===== */
+#submitModal .modal-card{
+  max-width: 720px;
+  border-radius: 16px;
+  padding: 16px 16px 14px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.18);
+}
+#submitModal .modal-backdrop{ backdrop-filter: saturate(1.1) blur(2px); }
+
+#submitModal .modal-head h2{
+  font: 700 1.2rem/1.2 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  margin: 2px 0 6px;
+}
+#submitModal .icon-btn.close{ border:none; background:transparent; font-size:18px; padding:6px 8px; }
+
+/* top row: Type / Time Sig / Tempo */
+#submitModal .grid3{
+  display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; align-items:end;
+}
+
+/* tidy labels + controls */
+#submitModal label{
+  text-align:left;
+  font-size:12px;
+  font-weight:600;
+  color:#6b7280;
+  display:flex; flex-direction:column; gap:6px;
+}
+#submitModal input,
+#submitModal select{
+  appearance:none;
+  background:#f9fafb;
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  padding:10px 12px;
+  font-size:14px;
+}
+#submitModal input:focus,
+#submitModal select:focus{
+  outline:none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 22%, transparent);
+}
+
+/* disabled Sig/BPM mirror */
+#submitModal input[disabled],
+#submitModal select[disabled]{
+  background:#f3f4f6;
+  color:#6b7280;
+  border-color:#e5e7eb;
+}
+
+/* detail fields */
+#submitModal #detailFields .grid2{
+  display:grid; grid-template-columns:1fr 1fr; gap:12px;
+}
+@media (max-width:680px){
+  #submitModal .grid3,
+  #submitModal #detailFields .grid2{ grid-template-columns:1fr; }
+}
+
+/* actions */
+#submitModal .modal-actions{
+  display:flex; justify-content:flex-end; gap:8px; margin-top:14px;
+}
+#submitModal .modal-actions .btn{
+  background: var(--blue);
+  border-color: var(--blue);
+  color:#fff;
+  border-radius:12px;
+  padding:10px 14px;
+  font-weight:700;
+}
+#submitModal .modal-actions .btn:hover{
+  filter: brightness(.96);
+}
+#submitModal .modal-actions .btn.outline{
+  background:#fff;
+  color: var(--blue);
+  border:1px solid var(--blue);
+}
