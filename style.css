@@ -1,99 +1,84 @@
-/* ==================== GROOVEMATCH THEME — #6b7280 ==================== */
-/* Brand tokens */
-:root{
-  --gm-blue:     #6b7280;  /* your color */
-  --gm-blue-hov: #5b6470;  /* hover (a hair darker) */
-  --gm-blue-act: #4b5563;  /* active/pressed (≈ gray-600) */
+/* ==================== GROOVEMATCH BRAND (LIVE FIX) ==================== */
+:root {
+  --gm-blue:     #026bc7;  /* your brand blue */
+  --gm-blue-hov: #025aa6;  /* darker hover */
+  --gm-blue-act: #014e8f;  /* pressed */
 }
 
-/* Links */
-a, a:visited{ color: var(--gm-blue); }
-a:hover{ color: var(--gm-blue-hov); }
-
-/* Toasts */
-.gm-toast.info{ background: var(--gm-blue) !important; border-color: var(--gm-blue) !important; color:#fff !important; }
-.gm-toast.ok  { background: #16a34a !important; border-color:#16a34a !important; color:#fff !important; }
-
-/* Primary buttons */
-.btn.primary, button.btn.primary, a.btn.primary{
-  background: var(--gm-blue) !important;
+/* --- Toasts --- */
+.gm-toast.info {
+  background-color: var(--gm-blue) !important;
   border-color: var(--gm-blue) !important;
-  color:#fff !important;
+  color: #fff !important;
 }
-.btn.primary:hover, button.btn.primary:hover, a.btn.primary:hover{
-  background: var(--gm-blue-hov) !important; border-color: var(--gm-blue-hov) !important;
+.gm-toast.ok {
+  background-color: #16a34a !important;  /* keep success green */
+  border-color: #16a34a !important;
+  color: #fff !important;
+}
+.gm-toast.warn { background:#f59e0b !important; border-color:#f59e0b !important; color:#fff !important; }
+.gm-toast.danger { background:#ef4444 !important; border-color:#ef4444 !important; color:#fff !important; }
+.gm-toast .x { color: #fff !important; }
+
+/* --- Primary Buttons (Submit Groove, Play, Library, etc.) --- */
+.btn.primary,
+button.btn.primary,
+a.btn.primary,
+#submitBtn,
+button.submit-groove,
+[data-role="submit-groove"],
+#playBtn,
+#admPlay,
+button[data-action="play"],
+#results [data-loadslug],
+#results [data-action="load"],
+#libraryResults [data-loadslug],
+#libraryResults [data-action="load"] {
+  background-color: var(--gm-blue) !important;
+  border-color: var(--gm-blue) !important;
+  color: #fff !important;
+}
+.btn.primary:hover,
+button.btn.primary:hover,
+a.btn.primary:hover,
+#submitBtn:hover,
+button.submit-groove:hover,
+[data-role="submit-groove"]:hover,
+#playBtn:hover,
+#admPlay:hover,
+button[data-action="play"]:hover,
+#results [data-loadslug]:hover,
+#results [data-action="load"]:hover,
+#libraryResults [data-loadslug]:hover,
+#libraryResults [data-action="load"]:hover {
+  background-color: var(--gm-blue-hov) !important;
+  border-color: var(--gm-blue-hov) !important;
+}
+#playBtn[aria-pressed="true"],
+#admPlay[aria-pressed="true"],
+button[data-action="play"][aria-pressed="true"] {
+  background-color: var(--gm-blue-act) !important;
+  border-color: var(--gm-blue-act) !important;
 }
 
-/* Outline / secondary remain neutral */
-.btn.outline, button.btn.outline, a.btn.outline,
-.btn.secondary, button.btn.secondary, a.btn.secondary{
-  background:#fff !important; color:inherit !important; border-color:currentColor !important;
+/* --- Outline style (neutral until hover) --- */
+.btn.outline, button.btn.outline, a.btn.outline {
+  background: #fff !important;
+  color: var(--gm-blue) !important;
+  border-color: var(--gm-blue) !important;
+}
+.btn.outline:hover, button.btn.outline:hover, a.btn.outline:hover {
+  background: var(--gm-blue) !important;
+  color: #fff !important;
+  border-color: var(--gm-blue) !important;
 }
 
-/* Play controls */
-#playBtn, #admPlay, button[data-action="play"]{
-  background: var(--gm-blue) !important; border-color: var(--gm-blue) !important; color:#fff !important;
-}
-#playBtn:hover, #admPlay:hover, button[data-action="play"]:hover{
-  background: var(--gm-blue-hov) !important; border-color: var(--gm-blue-hov) !important;
-}
-#playBtn[aria-pressed="true"], #admPlay[aria-pressed="true"], button[data-action="play"][aria-pressed="true"]{
-  background: var(--gm-blue-act) !important; border-color: var(--gm-blue-act) !important;
-}
+/* --- Links --- */
+a, a:visited { color: var(--gm-blue) !important; }
+a:hover { color: var(--gm-blue-hov) !important; }
 
-/* Submit Groove */
-#submitBtn, button.submit-groove, [data-role="submit-groove"]{
-  background: var(--gm-blue) !important; border-color: var(--gm-blue) !important; color:#fff !important;
-}
-#submitBtn:hover, button.submit-groove:hover, [data-role="submit-groove"]:hover{
-  background: var(--gm-blue-hov) !important; border-color: var(--gm-blue-hov) !important;
-}
-
-/* Library / results “Load” buttons */
-#results [data-loadslug], #results [data-action="load"],
-#libraryResults [data-loadslug], #libraryResults [data-action="load"]{
-  background: var(--gm-blue) !important; border-color: var(--gm-blue) !important; color:#fff !important;
-}
-#results [data-loadslug]:hover, #results [data-action="load"]:hover,
-#libraryResults [data-loadslug]:hover, #libraryResults [data-action="load"]:hover{
-  background: var(--gm-blue-hov) !important; border-color: var(--gm-blue-hov) !important;
-}
-
-/* Chips (active) */
-.mycat-toolbar .chip.active, .chip.active{
-  background: var(--gm-blue) !important; border-color: var(--gm-blue) !important; color:#fff !important;
-}
-
-/* Focus ring */
-button:focus, .btn:focus, input:focus, select:focus, textarea:focus{
+/* --- Focus ring --- */
+:is(button,.btn,input,select,textarea):focus {
   outline-color: var(--gm-blue) !important;
-  box-shadow: 0 0 0 2px rgba(107,114,128,0.35) !important; /* #6b7280 */
+  box-shadow: 0 0 0 2px rgba(2,107,199,0.35) !important;
 }
-
-/* Account page buttons */
-#page-account .btn:not(.outline):not(.secondary){
-  background: var(--gm-blue) !important; border-color: var(--gm-blue) !important; color:#fff !important;
-}
-#page-account .btn:not(.outline):not(.secondary):hover{
-  background: var(--gm-blue-hov) !important; border-color: var(--gm-blue-hov) !important;
-}
-#page-account .btn.outline{
-  background:#fff !important; color: var(--gm-blue) !important; border-color: var(--gm-blue) !important;
-}
-#page-account .btn.outline:hover{
-  background: var(--gm-blue) !important; color:#fff !important; border-color: var(--gm-blue) !important;
-}
-#page-account .ms-check{ accent-color: var(--gm-blue); }
-
-/* Avatars (single source of truth) */
-#acctAvatarMini, #acctAvatar{
-  border-radius:50%; object-fit:cover; background:#fff; border:1px solid #dcdcdc;
-}
-#acctAvatar{ width:72px; height:72px; }
-#acctAvatarMini{ width:40px; height:40px; }
-#acctAvatarMini:not([src]), #acctAvatar:not([src]), #acctAvatarMini[src=""], #acctAvatar[src=""]{
-  background:#fff; border:1px solid #dcdcdc;
-}
-
-/* Spacer used by JS to pin Account/Logout right */
-.nav-spacer{ flex:1 1 auto; }
