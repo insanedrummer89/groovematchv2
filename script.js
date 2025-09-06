@@ -6237,3 +6237,83 @@ document.querySelectorAll('#page-account .account-card').forEach(card=>{
   const prev = window.refreshAuthUI;
   window.refreshAuthUI = function(){ try{ prev?.(); }catch{} run(); };
 })();
+/* ========= GROOVEMATCH — ACCOUNT PAGE HARD RESET (drop-in) ========= */
+(function hardResetAccountPage(){
+  const getSession = () => { try { return JSON.parse(localStorage.getItem('gm_session')||'null'); } catch { return null; } };
+  const deriveName = (email)=> email ? email.split('@')[0] : 'Guest';
+  const esc = s => (s||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+  function render(){
+    const page = document.getElementById('page-account');
+    if (!page) return;
+
+    const user = getSession();
+    const name = user?.display || deriveName(user?.email);
+    const email = user?.email || '';
+    const role  = user?.role  || '';
+    const isStaff = !!user && (role === 'admin' || role === 'mod');
+
+    // Build canonical, clean markup (replaces whatever was there)
+    page.innerHTML = `
+      <div class="account-wrap" style="width:min(1000px,100%);margin:14px auto;display:grid;grid-template-columns:1fr;gap:14px;align-items:start">
+
+        <!-- My Account -->
+        <div class="account-card" style="background:#fff;border:1px solid #e6eaf2;border-radius:16px;box-shadow:0 6px 20px rgba(0,0,0,.06);padding:14px;text-align:left">
+          <h3 style="margin:6px 0 8px">My Account</h3>
+
+          <div class="acct-summary" style="display:flex;align-items:center;gap:12px;margin:8px 0 10px">
+            <img id="acctAvatarMini" alt=""
+                 style="width:40px;height:40px;border-radius:50%;object-fit:cover;background:#fff;border:1px solid #dcdcdc">
+            <div class="acct-lines" style="display:flex;flex-direction:column;line-height:1.2">
+              <div class="acct-name"  style="font-weight:700">${esc(name)}</div>
+              <div class="acct-email" style="opacity:.8;font-size:.9rem">${esc(email)}</div>
+            </div>
+            <div style="margin-left:auto">
+              <button class="btn settings" id="acctSettingsBtn"
+                      style="background:var(--gm-blue,#026bc7);border-color:var(--gm-blue,#026bc7);color:#fff;border-radius:12px;padding:8px 12px;font-weight:700">
+                Change Settings
+              </button>
+            </div>
+          </div>
+
+          <div class="gm-byline" style="font-size:12px;opacity:.75;margin-top:6px">${role ? 'Role: ' + esc(role) : ''}</div>
+        </div>
+
+        <!-- My Submissions -->
+        <div class="account-card" style="background:#fff;border:1px solid #e6eaf2;border-radius:16px;box-shadow:0 6px 20px rgba(0,0,0,.06);padding:14px;text-align:left">
+          <h3 style="margin:6px 0 8px">My Submissions</h3>
+          <div class="mychips" style="display:flex;gap:8px;margin:0 0 8px">
+            <span class="chip" style="display:inline-block;font-size:11px;padding:4px 10px;border:1px solid #e5e7eb;border-radius:999px;background:#f8fafc;color:#374151">All (0)</span>
+            <span class="chip" style="display:inline-block;font-size:11px;padding:4px 10px;border:1px solid #e5e7eb;border-radius:999px;background:#f8fafc;color:#374151">Songs (0)</span>
+            <span class="chip" style="display:inline-block;font-size:11px;padding:4px 10px;border:1px solid #e5e7eb;border-radius:999px;background:#f8fafc;color:#374151">Patterns (0)</span>
+          </div>
+          <div id="mySubs" class="my-list" style="display:grid;gap:8px">
+            <div class="muted" style="color:#6b7280">No submissions yet.</div>
+          </div>
+        </div>
+
+        <!-- Admin Tools (auto shown for admin/mod) -->
+        <div class="account-card" id="adminTools"
+             style="background:#fff;border:1px solid #e6eaf2;border-radius:16px;box-shadow:0 6px 20px rgba(0,0,0,.06);padding:14px;text-align:left; ${isStaff ? '' : 'display:none;'}">
+          <h3 style="margin:6px 0 8px">Admin Tools</h3>
+          <div class="muted" style="margin-bottom:8px;color:#6b7280">Promote/demote users. (Local demo only.)</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+            <input id="newAdminEmail" placeholder="email to make admin"
+              style="padding:8px 10px;border:1px solid #dcdcdc;border-radius:10px;flex:1;min-width:240px">
+            <button id="promoteBtn" class="btn small" style="padding:8px 10px">Promote</button>
+            <button id="demoteBtn"  class="btn small outline" style="padding:8px 10px">Demote</button>
+          </div>
+          <div id="userList" class="my-list" style="display:grid;gap:8px"></div>
+        </div>
+
+      </div>
+    `;
+  }
+
+  // run now + on auth refresh
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', render);
+  else render();
+
+  const prev = window.refreshAuthUI;
+  window.refreshAuthUI = function(){ try{ prev?.(); }catch{} render(); };
+})();
