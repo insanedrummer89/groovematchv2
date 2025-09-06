@@ -1141,7 +1141,34 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 })();
 
+(function renderAccountPretty(){
+  const byId = (id)=>document.getElementById(id);
+  const deriveName = (email)=> email ? email.split('@')[0] : 'Guest';
+  const getSession = ()=> { try { return JSON.parse(localStorage.getItem('gm_session')||'null'); } catch { return null; } };
 
+  function paint(){
+    const user = getSession();
+    const name = user?.display || deriveName(user?.email);
+    if (byId('acctName'))      byId('acctName').textContent = name;
+    if (byId('acctEmailLine')) byId('acctEmailLine').textContent = user?.email || '';
+    if (byId('acctRoleLine'))  byId('acctRoleLine').textContent = user?.role ? ('Role: ' + user.role) : '';
+
+    // toggle Admin Tools card
+    const adminTools = document.getElementById('adminTools');
+    if (adminTools){
+      const isStaff = !!user && (user.role === 'admin' || user.role === 'mod');
+      adminTools.style.display = isStaff ? '' : 'none';
+    }
+  }
+
+  // render now + on auth refresh
+  (document.readyState === 'loading')
+    ? document.addEventListener('DOMContentLoaded', paint)
+    : paint();
+
+  const prev = window.refreshAuthUI;
+  window.refreshAuthUI = function(){ try{ prev?.(); }catch{} paint(); };
+})();
 
 
 /* ---------------- Submit modal: mirror Sig/Tempo + Type UI ---------------- */
