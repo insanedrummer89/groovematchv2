@@ -1141,64 +1141,8 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 })();
 
-/* ===== Account summary card (visual, not the legacy rows) ===== */
-(function accountSummaryCard(){
-  const $ = (s)=>document.querySelector(s);
-  const esc = (s)=> (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  const getSession = () => {
-    try { return JSON.parse(localStorage.getItem('gm_session') || 'null'); }
-    catch { return null; }
-  };
-  const deriveDisplayName = (email)=> email ? email.split('@')[0] : 'Guest';
 
-  function render(){
-    // First account card on the page
-    const card = document.querySelector('#page-account .account-card');
-    if (!card) return;
 
-    const user = getSession();
-    const display = user?.display || deriveDisplayName(user?.email);
-    const email   = user?.email || '';
-    const role    = user?.role  || '';
-
-    // Build the pretty summary (matches CSS you added earlier)
-    card.innerHTML = `
-      <h3 style="margin:6px 0 8px">My Account</h3>
-      <div class="acct-summary">
-        <img id="acctAvatarMini" alt="" />
-        <div class="acct-lines">
-          <div class="acct-name">${esc(display)}</div>
-          <div class="acct-email">${esc(email)}</div>
-        </div>
-        <div style="margin-left:auto">
-          <button class="btn settings" id="acctSettingsBtn">Change Settings</button>
-        </div>
-      </div>
-      <div class="gm-byline">${role ? 'Role: ' + esc(role) : ''}</div>
-    `;
-
-    // Show/hide Admin Tools card based on role
-    const adminTools = $('#adminTools');
-    if (adminTools) {
-      const isStaff = role === 'admin' || role === 'mod';
-      adminTools.style.display = isStaff ? '' : 'none';
-    }
-  }
-
-  // Render on load
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', render);
-  } else {
-    render();
-  }
-
-  // Re-render whenever your auth UI refreshes
-  const prev = window.refreshAuthUI;
-  window.refreshAuthUI = function(){
-    try { prev?.(); } catch {}
-    render();
-  };
-})();
 
 /* ---------------- Submit modal: mirror Sig/Tempo + Type UI ---------------- */
 (function submitMetaForceSync(){
