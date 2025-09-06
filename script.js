@@ -1141,35 +1141,32 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 })();
 
-(function renderAccountPretty(){
-  const byId = (id)=>document.getElementById(id);
-  const deriveName = (email)=> email ? email.split('@')[0] : 'Guest';
-  const getSession = ()=> { try { return JSON.parse(localStorage.getItem('gm_session')||'null'); } catch { return null; } };
-
-  function paint(){
-    const user = getSession();
-    const name = user?.display || deriveName(user?.email);
-    if (byId('acctName'))      byId('acctName').textContent = name;
-    if (byId('acctEmailLine')) byId('acctEmailLine').textContent = user?.email || '';
-    if (byId('acctRoleLine'))  byId('acctRoleLine').textContent = user?.role ? ('Role: ' + user.role) : '';
-
-    // toggle Admin Tools card
-    const adminTools = document.getElementById('adminTools');
-    if (adminTools){
-      const isStaff = !!user && (user.role === 'admin' || user.role === 'mod');
-      adminTools.style.display = isStaff ? '' : 'none';
-    }
-  }
-
-  // render now + on auth refresh
-  (document.readyState === 'loading')
-    ? document.addEventListener('DOMContentLoaded', paint)
-    : paint();
-
+/* ---------------- Account: header + helpers ---------------- */
+function deriveDisplayName(email){ return email ? email.split('@')[0] : 'Guest'; }
+function renderAccount(){
+  const user = JSON.parse(localStorage.getItem('gm_session') || 'null');
+  const nameEl = document.getElementById('acctDisplay');
+  const emailEl= document.getElementById('acctEmail');
+  const roleEl = document.getElementById('acctRole');
+  if (!nameEl || !emailEl || !roleEl) return;
+  if (!user){ nameEl.textContent='Not signed in'; emailEl.textContent=''; roleEl.textContent=''; return; }
+  const display = user.display || deriveDisplayName(user.email);
+  nameEl.textContent = display;
+  emailEl.textContent = user.email || '';
+  roleEl.textContent = user.role ? ('Role: ' + user.role) : '';
+}
+(function hookAuthRefresh(){
   const prev = window.refreshAuthUI;
-  window.refreshAuthUI = function(){ try{ prev?.(); }catch{} paint(); };
+  window.refreshAuthUI = function(){ try{ prev?.(); }catch{} renderAccount(); };
 })();
-
+document.addEventListener('DOMContentLoaded', renderAccount);
+// For local testing, set a session manually (uncomment):
+// window._gm_setSession = function(email, role='user'){
+//   const display = deriveDisplayName(email);
+//   localStorage.setItem('gm_session', JSON.stringify({ email, role, display }));
+//   if (typeof refreshAuthUI === 'function') refreshAuthUI();
+// };
+// _gm_setSession('insanedrummer89@gmail.com', 'admin');
 
 /* ---------------- Submit modal: mirror Sig/Tempo + Type UI ---------------- */
 (function submitMetaForceSync(){
@@ -6080,371 +6077,64 @@ window.findByText = window.findByText || function (root, text, {selector='*', ex
   setTimeout(apply, 300);
 })();
 
-/* ========= GROOVEMATCH — ACCOUNT PAGE HARD RESET (drop-in) ========= */
-(function hardResetAccountPage(){
-  const getSession = () => { try { return JSON.parse(localStorage.getItem('gm_session')||'null'); } catch { return null; } };
-  const deriveName = (email)=> email ? email.split('@')[0] : 'Guest';
-  const esc = s => (s||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
-  function render(){
-    const page = document.getElementById('page-account');
-    if (!page) return;
 
-    const user = getSession();
-    const name = user?.display || deriveName(user?.email);
-    const email = user?.email || '';
-    const role  = user?.role  || '';
-    const isStaff = !!user && (role === 'admin' || role === 'mod');
 
-    // Build canonical, clean markup (replaces whatever was there)
-    page.innerHTML = `
-      <div class="account-wrap" style="width:min(1000px,100%);margin:14px auto;display:grid;grid-template-columns:1fr;gap:14px;align-items:start">
 
-        <!-- My Account -->
-        <div class="account-card" style="background:#fff;border:1px solid #e6eaf2;border-radius:16px;box-shadow:0 6px 20px rgba(0,0,0,.06);padding:14px;text-align:left">
-          <h3 style="margin:6px 0 8px">My Account</h3>
 
-          <div class="acct-summary" style="display:flex;align-items:center;gap:12px;margin:8px 0 10px">
-            <img id="acctAvatarMini" alt=""
-                 style="width:40px;height:40px;border-radius:50%;object-fit:cover;background:#fff;border:1px solid #dcdcdc">
-            <div class="acct-lines" style="display:flex;flex-direction:column;line-height:1.2">
-              <div class="acct-name"  style="font-weight:700">${esc(name)}</div>
-              <div class="acct-email" style="opacity:.8;font-size:.9rem">${esc(email)}</div>
-            </div>
-            <div style="margin-left:auto">
-              <button class="btn settings" id="acctSettingsBtn"
-                      style="background:var(--gm-blue,#026bc7);border-color:var(--gm-blue,#026bc7);color:#fff;border-radius:12px;padding:8px 12px;font-weight:700">
-                Change Settings
-              </button>
-            </div>
-          </div>
 
-          <div class="gm-byline" style="font-size:12px;opacity:.75;margin-top:6px">${role ? 'Role: ' + esc(role) : ''}</div>
-        </div>
+/* 
+  GrooveMatch — UNIFIED BUILD (merge2, 2025-09-04)
+  ------------------------------------------------
+  This file merges:
+  • LIVE base (clean build)
+  • USER script (your prior patches: submit modal sync, pattern UI, admin pending/approve fixes, audio bridge, etc.)
 
-        <!-- My Submissions -->
-        <div class="account-card" style="background:#fff;border:1px solid #e6eaf2;border-radius:16px;box-shadow:0 6px 20px rgba(0,0,0,.06);padding:14px;text-align:left">
-          <h3 style="margin:6px 0 8px">My Submissions</h3>
-          <div class="mychips" style="display:flex;gap:8px;margin:0 0 8px">
-            <span class="chip" style="display:inline-block;font-size:11px;padding:4px 10px;border:1px solid #e5e7eb;border-radius:999px;background:#f8fafc;color:#374151">All (0)</span>
-            <span class="chip" style="display:inline-block;font-size:11px;padding:4px 10px;border:1px solid #e5e7eb;border-radius:999px;background:#f8fafc;color:#374151">Songs (0)</span>
-            <span class="chip" style="display:inline-block;font-size:11px;padding:4px 10px;border:1px solid #e5e7eb;border-radius:999px;background:#f8fafc;color:#374151">Patterns (0)</span>
-          </div>
-          <div id="mySubs" class="my-list" style="display:grid;gap:8px">
-            <div class="muted" style="color:#6b7280">No submissions yet.</div>
-          </div>
-        </div>
+  Notes:
+  - Keep LIVE as the base, layer USER patches after.
+  - Avoid optional-chaining on the left side of assignments (e.g., el?.value = ... is illegal).
+  - Use guarded assignments instead: const el = byId('id'); if (el) el.value = ...;
+*/
 
-        <!-- Admin Tools (auto shown for admin/mod) -->
-        <div class="account-card" id="adminTools"
-             style="background:#fff;border:1px solid #e6eaf2;border-radius:16px;box-shadow:0 6px 20px rgba(0,0,0,.06);padding:14px;text-align:left; ${isStaff ? '' : 'display:none;'}">
-          <h3 style="margin:6px 0 8px">Admin Tools</h3>
-          <div class="muted" style="margin-bottom:8px;color:#6b7280">Promote/demote users. (Local demo only.)</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-            <input id="newAdminEmail" placeholder="email to make admin"
-              style="padding:8px 10px;border:1px solid #dcdcdc;border-radius:10px;flex:1;min-width:240px">
-            <button id="promoteBtn" class="btn small" style="padding:8px 10px">Promote</button>
-            <button id="demoteBtn"  class="btn small outline" style="padding:8px 10px">Demote</button>
-          </div>
-          <div id="userList" class="my-list" style="display:grid;gap:8px"></div>
-        </div>
-
-      </div>
-    `;
-  }
-
-  // run now + on auth refresh
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', render);
-  else render();
-
-  const prev = window.refreshAuthUI;
-  window.refreshAuthUI = function(){ try{ prev?.(); }catch{} render(); };
-})();
-
-/* ===== Account › My Submissions — single chips + live counts ===== */
-(function finalizeMySubsChips(){
-  const norm = s => (s||'').toLowerCase().trim();
-
-  function findSubsCard(){
-    return [...document.querySelectorAll('#page-account .account-card')]
-      .find(c => /my submissions/i.test(c.querySelector('h3')?.textContent||''));
-  }
-
-  function countFromDom(){
-    const list = document.getElementById('mySubs');
-    if (!list) return { all:0, song:0, pattern:0 };
-    const items = [...list.children];
-    const song = items.filter(el => (el.dataset.type||'song') === 'song').length;
-    const pattern = items.filter(el => (el.dataset.type||'') === 'pattern').length;
-    return { all: items.length, song, pattern };
-  }
-
-  function renderChips(){
-    const card = findSubsCard();
-    if (!card) return;
-
-    // remove ALL prior chip rows
-    card.querySelectorAll('.mychips').forEach(n => n.remove());
-
-    const counts = countFromDom();
-    const wrap = document.createElement('div');
-    wrap.className = 'mychips';
-    wrap.style.cssText = 'display:flex;gap:8px;margin:0 0 8px;flex-wrap:wrap';
-    wrap.innerHTML = `
-      <span class="chip">All (${counts.all})</span>
-      <span class="chip">Songs (${counts.song})</span>
-      <span class="chip">Patterns (${counts.pattern})</span>
-    `;
-
-    // insert right above the list
-    const list = document.getElementById('mySubs');
-    if (list) card.insertBefore(wrap, list);
-  }
-
-  function run(){ renderChips(); }
-
-  // run now
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
-  else run();
-
-  // update when auth UI refreshes (counts may change)
-  const prev = window.refreshAuthUI;
-  window.refreshAuthUI = function(){ try{ prev?.(); }catch{} run(); };
-
-  // live-update if the submissions list changes
-  const list = document.getElementById('mySubs');
-  if (list) new MutationObserver(run).observe(list, { childList: true });
-})();
-
-/* =========================
-   ACCOUNT SETTINGS + MY SUBS BULK ACTIONS
-   (Drop-in: no HTML edits required)
-   ========================= */
-(function grooveMatchAccountExtras(){
-  const $  = s => document.querySelector(s);
-  const $$ = s => [...document.querySelectorAll(s)];
-  const byId = id => document.getElementById(id);
-  const getSession = () => { try { return JSON.parse(localStorage.getItem('gm_session')||'null'); } catch { return null; } };
-  const setSession = (obj) => localStorage.setItem('gm_session', JSON.stringify(obj||null));
-  const deriveName = (email)=> email ? email.split('@')[0] : 'Guest';
-
-  /* ---------------- Settings Modal (Display Name + Avatar) ---------------- */
-  function ensureSettingsModal(){
-    if (byId('acctSettingsModal')) return;
-
-    const modal = document.createElement('div');
-    modal.id = 'acctSettingsModal';
-    modal.className = 'modal';
-    modal.setAttribute('aria-hidden','true');
-    modal.innerHTML = `
-      <div class="modal-backdrop" data-close></div>
-      <div class="modal-card" role="dialog" aria-label="Account Settings" style="max-width:520px">
-        <div class="modal-head" style="display:flex;align-items:center;justify-content:space-between">
-          <h2 style="margin:0">Change Settings</h2>
-          <button class="icon-btn close" data-close aria-label="Close">✕</button>
-        </div>
-        <div class="modal-body" style="display:grid;gap:10px">
-          <label style="display:flex;flex-direction:column;gap:6px">
-            <span>Display Name</span>
-            <input id="acctSettingsName" type="text" placeholder="Your name"
-                   style="padding:8px 10px;border:1px solid #dcdcdc;border-radius:10px">
-          </label>
-          <div>
-            <label style="display:flex;flex-direction:column;gap:6px">
-              <span>Profile Picture</span>
-              <input id="acctSettingsAvatarFile" type="file" accept="image/*">
-            </label>
-            <div style="display:flex;gap:8px;margin-top:8px">
-              <button class="btn outline" id="acctSettingsRemovePhoto">Remove Photo</button>
-            </div>
-          </div>
-        </div>
-        <div class="modal-actions" style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
-          <button class="btn outline" data-close>Cancel</button>
-          <button class="btn" id="acctSettingsSave">Save</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(modal);
-
-    // simple open/close helpers
-    function open(){ modal.setAttribute('aria-hidden','false'); }
-    function close(){ modal.setAttribute('aria-hidden','true'); }
-
-    // populate when opened
-    function hydrate(){
-      const sess = getSession() || {};
-      const name = sess.display || deriveName(sess.email||'');
-      byId('acctSettingsName').value = name || '';
-    }
-
-    // open from Account button
-    document.addEventListener('click', (e)=>{
-      const btn = e.target.closest('#acctSettingsBtn');
-      if (!btn) return;
-      hydrate(); open();
-    });
-
-    // close handlers
-    modal.addEventListener('click', (e)=>{
-      if (e.target.matches('[data-close], .modal-backdrop, .icon-btn.close')) close();
-    });
-
-    // read file as data URL
-    function fileToDataURL(file){
-      return new Promise((resolve,reject)=>{
-        const fr = new FileReader();
-        fr.onload = ()=> resolve(fr.result);
-        fr.onerror = reject;
-        fr.readAsDataURL(file);
-      });
-    }
-
-    // remove photo
-    byId('acctSettingsRemovePhoto').addEventListener('click', ()=>{
-      const sess = getSession() || {};
-      delete sess.avatar;
-      setSession(sess);
-      if (typeof window.refreshAuthUI === 'function') window.refreshAuthUI();
-    });
-
-    // save
-    byId('acctSettingsSave').addEventListener('click', async ()=>{
-      const sess = getSession() || {};
-      // name
-      const newName = byId('acctSettingsName').value.trim();
-      if (newName) sess.display = newName;
-
-      // avatar
-      const f = byId('acctSettingsAvatarFile').files?.[0];
-      if (f) {
-        try { sess.avatar = await fileToDataURL(f); }
-        catch {}
-      }
-
-      setSession(sess);
-      if (typeof window.refreshAuthUI === 'function') window.refreshAuthUI();
-      modal.setAttribute('aria-hidden','true');
-      // optional toast
-      try { window.gmToast && window.gmToast('Saved your settings','ok'); } catch {}
-    });
-  }
-
-  // paint avatar into summary if present
-  function applyAvatar(){
-    const img = byId('acctAvatarMini');
-    if (!img) return;
-    const sess = getSession() || {};
-    if (sess.avatar) img.src = sess.avatar;
-    else img.removeAttribute('src'); // keep white circle style
-  }
-
-  /* ---------------- My Submissions: Bulk Actions Bar ---------------- */
-  function ensureBulkBar(){
-    const card = [...document.querySelectorAll('#page-account .account-card')]
-      .find(c => /my submissions/i.test(c.querySelector('h3')?.textContent||''));
-    const list = byId('mySubs');
-    if (!card || !list) return;
-
-    if (!byId('subsBulkBar')){
-      const bar = document.createElement('div');
-      bar.id = 'subsBulkBar';
-      bar.style.cssText = 'display:none;align-items:center;gap:8px;margin:6px 0 8px';
-      bar.innerHTML = `
-        <button class="btn small outline" id="subsSelectAll">Select All</button>
-        <button class="btn small outline" id="subsClearAll">Clear</button>
-        <button class="btn small outline" id="subsCancel">Cancel</button>
-        <button class="btn small danger" id="subsDelete">Delete</button>
-      `;
-      card.insertBefore(bar, list);
-    }
-
-    // ensure each submission has a checkbox
-    function decorateItems(){
-      $$('#mySubs > *').forEach(li=>{
-        if (li.querySelector('input[type="checkbox"]')) return;
-        const box = document.createElement('input');
-        box.type = 'checkbox';
-        box.className = 'ms-check';
-        box.style.marginRight = '8px';
-        // Try to put it at the start
-        li.insertBefore(box, li.firstChild);
-      });
-      updateBar();
-    }
-
-    // show/hide bar based on any checked
-    function updateBar(){
-      const any = $$('#mySubs input[type="checkbox"]:checked').length > 0;
-      byId('subsBulkBar').style.display = any ? 'flex' : 'none';
-    }
-
-    // events
-    byId('subsSelectAll').addEventListener('click', ()=>{
-      $$('#mySubs input[type="checkbox"]').forEach(b=> b.checked = true);
-      updateBar();
-    });
-    byId('subsClearAll').addEventListener('click', ()=>{
-      $$('#mySubs input[type="checkbox"]').forEach(b=> b.checked = false);
-      updateBar();
-    });
-    byId('subsCancel').addEventListener('click', ()=>{
-      $$('#mySubs input[type="checkbox"]').forEach(b=> b.checked = false);
-      updateBar();
-    });
-    byId('subsDelete').addEventListener('click', ()=>{
-      const selected = $$('#mySubs input[type="checkbox"]:checked').map(b=> b.closest('*'));
-      if (!selected.length) return;
-      if (!confirm(`Delete ${selected.length} submission${selected.length>1?'s':''}?`)) return;
-
-      // Try to remove from Approved store first (if available)
-      let storeTouched = false;
+// ------- Safe deep assignment helper (ONLY used when needed; guarded) -------
+(function(){
+  if (!window.__GM_ASSIGN_DEEP__) {
+    window.__GM_ASSIGN_DEEP__ = true;
+    window.assignDeepSafe = function(getter, path, value){
       try{
-        if (typeof getApproved === 'function' && typeof setApproved === 'function'){
-          const cur = getApproved();
-          const slugs = selected.map(card => card?.getAttribute?.('data-slug') || '').filter(Boolean);
-          const next = cur.filter(g => !slugs.includes(g.slug||''));
-          if (next.length !== cur.length){
-            setApproved(next);
-            storeTouched = true;
-          }
+        const el = (typeof getter === 'function') ? getter() : getter;
+        if (!el) return;
+        const parts = String(path).split('.');
+        let obj = el;
+        for (let i = 0; i < parts.length - 1; i++){
+          if (!obj) return;
+          obj = obj[parts[i]];
         }
-      }catch{}
-
-      // Remove from DOM regardless
-      selected.forEach(el=> el && el.remove());
-
-      // Hide the bar and maybe toast
-      byId('subsBulkBar').style.display = 'none';
-      try{
-        window.gmToast && window.gmToast(
-          storeTouched ? 'Deleted from library.' : 'Removed from list.',
-          'ok'
-        );
-      }catch{}
-    });
-
-    // React to checking
-    byId('mySubs').addEventListener('change', (e)=>{
-      if (e.target.matches('input[type="checkbox"]')) updateBar();
-    });
-
-    // Decorate now + on future changes
-    decorateItems();
-    new MutationObserver(decorateItems).observe(byId('mySubs'), { childList:true });
+        if (obj) obj[parts[parts.length - 1]] = value;
+      } catch (e) { /* no-op */ }
+    };
   }
-
-  /* ---------------- Run & hook into auth refresh ---------------- */
-  function run(){
-    ensureSettingsModal();
-    applyAvatar();
-    ensureBulkBar();
-  }
-
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
-  else run();
-
-  const prev = window.refreshAuthUI;
-  window.refreshAuthUI = function(){ try { prev?.(); } catch {} run(); };
 })();
+
+
+// ------- Safe deep assignment helper (fixes "Invalid left-hand side" with ?.prop = value) -------
+(function(){
+  if (!window.__GM_ASSIGN_DEEP__) {
+    window.__GM_ASSIGN_DEEP__ = true;
+    window.assignDeepSafe = function(getter, path, value){
+      try{
+        const el = (typeof getter === 'function') ? getter() : getter;
+        if (!el) return;
+        const parts = String(path).split('.');
+        let obj = el;
+        for (let i = 0; i < parts.length - 1; i++){
+          if (!obj) return;
+          obj = obj[parts[i]];
+        }
+        if (obj) obj[parts[parts.length - 1]] = value;
+      }catch{}
+    };
+  }
+})();
+
 
