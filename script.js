@@ -867,6 +867,18 @@ function loadGroove(g){
     document.addEventListener('DOMContentLoaded', ()=>{ if (byId('page-library')?.classList.contains('active')) goLibraryDefault(); });
   })();
 
+// Re-render the library whenever any control changes
+;['libSearch','libType','libSig','libMin','libMax','libSort'].forEach(id=>{
+  const el = byId(id);
+  if (!el) return;
+  el.addEventListener('input',  renderLibrary);
+  el.addEventListener('change', renderLibrary);
+});
+
+// Also render once on load in case the Library page is already visible
+if (document.readyState !== 'loading') renderLibrary();
+else document.addEventListener('DOMContentLoaded', renderLibrary);
+  
   // Library admin delete wiring (persistently hide; also remove from Approved if match)
   (function wireDelete(){
     const grid = byId('libGrid'); if (!grid) return;
