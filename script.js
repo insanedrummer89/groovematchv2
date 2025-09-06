@@ -6160,3 +6160,58 @@ window.findByText = window.findByText || function (root, text, {selector='*', ex
   const prev = window.refreshAuthUI;
   window.refreshAuthUI = function(){ try{ prev?.(); }catch{} render(); };
 })();
+
+/* ===== Account › My Submissions — single chips + live counts ===== */
+(function finalizeMySubsChips(){
+  const norm = s => (s||'').toLowerCase().trim();
+
+  function findSubsCard(){
+    return [...document.querySelectorAll('#page-account .account-card')]
+      .find(c => /my submissions/i.test(c.querySelector('h3')?.textContent||''));
+  }
+
+  function countFromDom(){
+    const list = document.getElementById('mySubs');
+    if (!list) return { all:0, song:0, pattern:0 };
+    const items = [...list.children];
+    const song = items.filter(el => (el.dataset.type||'song') === 'song').length;
+    const pattern = items.filter(el => (el.dataset.type||'') === 'pattern').length;
+    return { all: items.length, song, pattern };
+  }
+
+  function renderChips(){
+    const card = findSubsCard();
+    if (!card) return;
+
+    // remove ALL prior chip rows
+    card.querySelectorAll('.mychips').forEach(n => n.remove());
+
+    const counts = countFromDom();
+    const wrap = document.createElement('div');
+    wrap.className = 'mychips';
+    wrap.style.cssText = 'display:flex;gap:8px;margin:0 0 8px;flex-wrap:wrap';
+    wrap.innerHTML = `
+      <span class="chip">All (${counts.all})</span>
+      <span class="chip">Songs (${counts.song})</span>
+      <span class="chip">Patterns (${counts.pattern})</span>
+    `;
+
+    // insert right above the list
+    const list = document.getElementById('mySubs');
+    if (list) card.insertBefore(wrap, list);
+  }
+
+  function run(){ renderChips(); }
+
+  // run now
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
+  else run();
+
+  // update when auth UI refreshes (counts may change)
+  const prev = window.refreshAuthUI;
+  window.refreshAuthUI = function(){ try{ prev?.(); }catch{} run(); };
+
+  // live-update if the submissions list changes
+  const list = document.getElementById('mySubs');
+  if (list) new MutationObserver(run).observe(list, { childList: true });
+})();
