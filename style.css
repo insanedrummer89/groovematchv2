@@ -84,50 +84,49 @@ a:hover { color: var(--gm-blue-hov) !important; }
   box-shadow: 0 0 0 2px rgba(2,107,199,0.35) !important;
 }
 
-/* === Account Card Styling === */
-.account-card.pretty {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  background: #fff;
-  box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+/* ===== Account page — restore original look ===== */
+#page-account { margin: 14px auto; }
+
+#page-account .account-wrap{
+  width:min(1000px,100%);
+  margin:14px auto;
+  display:grid;
+  grid-template-columns:1fr;
+  gap:14px;
+  align-items:start;
 }
 
-.account-card.pretty img {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  object-fit: cover;
-  background: #fff;
-  border: 1px solid #d1d5db;
+#page-account .account-card{
+  background:#fff;
+  border:1px solid #e6eaf2;
+  border-radius:16px;
+  box-shadow:0 6px 20px rgba(0,0,0,.06);
+  padding:14px;
+  text-align:left;
 }
 
-.account-card.pretty .acct-lines {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+#page-account h3{
+  margin:6px 0 8px;
+  font-weight:800;
+  letter-spacing:.2px;
 }
 
-.account-card.pretty .acct-name {
-  font-weight: 700;
-  font-size: 1rem;
+/* “My Account” summary */
+#page-account .acct-summary{
+  display:flex; align-items:center; gap:12px; margin:8px 0 10px;
 }
-
-.account-card.pretty .acct-email {
-  font-size: 0.9rem;
-  color: #6b7280;
+#page-account #acctAvatarMini{
+  width:40px; height:40px; border-radius:50%;
+  object-fit:cover; background:#fff; border:1px solid #dcdcdc;
 }
+#page-account .acct-lines{ display:flex; flex-direction:column; line-height:1.2; }
+#page-account .acct-name{ font-weight:700; }
+#page-account .acct-email{ opacity:.8; font-size:.9rem; }
 
-.account-card.pretty button {
-  margin-left: auto;
-}
-
+/* “Change Settings” button */
 #page-account .btn.settings{
-  background: var(--gm-blue, #026bc7);
-  border-color: var(--gm-blue, #026bc7);
+  background:var(--blue);
+  border-color:var(--blue);
   color:#fff;
   border-radius:12px;
   padding:8px 12px;
@@ -135,7 +134,46 @@ a:hover { color: var(--gm-blue-hov) !important; }
 }
 #page-account .btn.settings:hover{ filter:brightness(.96); }
 
+/* “My Submissions” chips */
+#page-account .status.badge,
 #page-account .chip{
-  display:inline-block; font-size:11px; padding:4px 10px;
-  border:1px solid #e5e7eb; border-radius:999px; background:#f8fafc; color:#374151;
+  display:inline-block;
+  font-size:11px;
+  padding:4px 10px;
+  border:1px solid #e5e7eb;
+  border-radius:999px;
+  background:#f8fafc;
+  color:#374151;
+  margin-right:6px;
 }
+#page-account .chip.active{
+  background:var(--blue);
+  border-color:var(--blue);
+  color:#fff;
+}
+
+/* Lists */
+#page-account .my-list{ display:grid; gap:8px; }
+#page-account .my-item{
+  background:#fff;
+  border:1px solid #ececec;
+  border-radius:12px;
+  padding:10px;
+}
+#page-account .my-item .t{ font-weight:800; }
+#page-account .my-item .sub{ font-size:12px; color:#6b7280; }
+
+/* Admin Tools card */
+#page-account #adminTools .muted{ color:#6b7280; }
+#page-account #adminTools input{
+  padding:8px 10px; border:1px solid #dcdcdc; border-radius:10px; min-width:240px;
+}
+#page-account #adminTools .btn.small{ padding:8px 10px; }
+
+/* Hide legacy rows you didn’t want */
+#page-account #acctDisplay,
+#page-account #acctEmail,
+#page-account #acctRole { display:none !important; }
+
+/* keep checkbox tint on brand */
+#page-account .ms-check{ accent-color:var(--blue); }
