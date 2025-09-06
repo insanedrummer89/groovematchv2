@@ -323,32 +323,31 @@
   </section>
 
   <!-- Account Page -->
-  <section id="page-account" class="page">
-    <div class="account-wrap">
-    </div>
-    
-      <div class="account-card">
-        <h3 style="margin:6px 0 8px">My Submissions</h3>
-        <div id="mySubs" class="my-list"></div>
-      </div>
+<section id="page-account" class="page">
+  <div class="account-wrap">
+    <!-- Account card will be injected here by JS -->
+  </div>
 
-      <div class="account-card">
-        <h3 style="margin:6px 0 8px">My Submissions</h3>
-        <div id="mySubs" class="my-list"></div>
-      </div>
-      <!-- Admin Tools -->
-      <div class="account-card" id="adminTools" style="display:none">
-        <h3 style="margin:6px 0 8px">Admin Tools</h3>
-        <div class="muted" style="margin-bottom:8px">Promote/demote users. (Local demo only.)</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
-          <input id="newAdminEmail" placeholder="email to make admin" style="padding:8px 10px;border:1px solid #dcdcdc;border-radius:10px;flex:1;min-width:240px">
-          <button id="promoteBtn" class="btn small">Promote</button>
-          <button id="demoteBtn" class="btn small outline">Demote</button>
-        </div>
-        <div id="userList" class="my-list"></div>
-      </div>
+  <div class="account-card">
+    <h3 style="margin:6px 0 8px">My Submissions</h3>
+    <div id="mySubs" class="my-list"></div>
+  </div>
+
+  <!-- Admin Tools -->
+  <div class="account-card" id="adminTools" style="display:none">
+    <h3 style="margin:6px 0 8px">Admin Tools</h3>
+    <div class="muted" style="margin-bottom:8px">
+      Promote/demote users. (Local demo only.)
     </div>
-  </section>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <input id="newAdminEmail" placeholder="email to make admin"
+        style="padding:8px 10px;border:1px solid #dcdcdc;border-radius:10px;flex:1;min-width:240px">
+      <button id="promoteBtn" class="btn small">Promote</button>
+      <button id="demoteBtn" class="btn small outline">Demote</button>
+    </div>
+    <div id="userList" class="my-list"></div>
+  </div>
+</section>
 
   <!-- Admin Pending Page -->
   <section id="page-admin" class="page">
