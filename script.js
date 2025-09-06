@@ -6079,3 +6079,65 @@ window.findByText = window.findByText || function (root, text, {selector='*', ex
   }
   setTimeout(apply, 300);
 })();
+
+/* ==== ACCOUNT OVERRIDE (safe drop-in) ==== */
+(function accountOverride(){
+  const byId = id => document.getElementById(id);
+  const deriveName = email => email ? email.split('@')[0] : 'Guest';
+  const getSession = () => {
+    try { return JSON.parse(localStorage.getItem('gm_session')||'null'); }
+    catch { return null; }
+  };
+
+  function renderAccountPretty(){
+    const wrap = byId('acctCard') || byId('page-account')?.querySelector('.account-wrap');
+    if (!wrap) return;
+
+    // nuke old card if still present
+    const old = byId('acctDisplay');
+    if (old) old.closest('.account-card')?.remove();
+
+    // if no pretty card yet, inject it
+    if (!byId('acctName')){
+      const html = `
+        <div class="account-card" id="acctCard">
+          <h3 style="margin:6px 0 8px">My Account</h3>
+          <div class="acct-summary">
+            <img id="acctAvatarMini" alt="" style="width:40px;height:40px;border-radius:50%;background:#eee;border:1px solid #ddd;object-fit:cover;">
+            <div class="acct-lines" style="display:flex;flex-direction:column;line-height:1.2">
+              <div class="acct-name" id="acctName" style="font-weight:700"></div>
+              <div class="acct-email" id="acctEmailLine" style="opacity:.8;font-size:.9rem"></div>
+            </div>
+            <div style="margin-left:auto">
+              <button class="btn" id="acctSettingsBtn">Change Settings</button>
+            </div>
+          </div>
+          <div class="gm-byline" id="acctRoleLine" style="font-size:12px;opacity:.75;margin-top:6px"></div>
+        </div>`;
+      wrap.insertAdjacentHTML('afterbegin', html);
+    }
+
+    // populate fields
+    const user = getSession();
+    const name = user?.display || deriveName(user?.email);
+
+    if (byId('acctName'))      byId('acctName').textContent = name;
+    if (byId('acctEmailLine')) byId('acctEmailLine').textContent = user?.email || '';
+    if (byId('acctRoleLine'))  byId('acctRoleLine').textContent = user?.role ? ('Role: ' + user.role) : '';
+
+    // toggle Admin Tools
+    const adminTools = byId('adminTools');
+    if (adminTools){
+      const isStaff = !!user && (user.role==='admin'||user.role==='mod');
+      adminTools.style.display = isStaff ? '' : 'none';
+    }
+  }
+
+  // run now and whenever auth UI refreshes
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', renderAccountPretty);
+  else renderAccountPretty();
+
+  const prev = window.refreshAuthUI;
+  window.refreshAuthUI = function(){ try{ prev?.(); }catch{} renderAccountPretty(); };
+})();
+
