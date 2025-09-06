@@ -6215,3 +6215,236 @@ window.findByText = window.findByText || function (root, text, {selector='*', ex
   const list = document.getElementById('mySubs');
   if (list) new MutationObserver(run).observe(list, { childList: true });
 })();
+
+/* =========================
+   ACCOUNT SETTINGS + MY SUBS BULK ACTIONS
+   (Drop-in: no HTML edits required)
+   ========================= */
+(function grooveMatchAccountExtras(){
+  const $  = s => document.querySelector(s);
+  const $$ = s => [...document.querySelectorAll(s)];
+  const byId = id => document.getElementById(id);
+  const getSession = () => { try { return JSON.parse(localStorage.getItem('gm_session')||'null'); } catch { return null; } };
+  const setSession = (obj) => localStorage.setItem('gm_session', JSON.stringify(obj||null));
+  const deriveName = (email)=> email ? email.split('@')[0] : 'Guest';
+
+  /* ---------------- Settings Modal (Display Name + Avatar) ---------------- */
+  function ensureSettingsModal(){
+    if (byId('acctSettingsModal')) return;
+
+    const modal = document.createElement('div');
+    modal.id = 'acctSettingsModal';
+    modal.className = 'modal';
+    modal.setAttribute('aria-hidden','true');
+    modal.innerHTML = `
+      <div class="modal-backdrop" data-close></div>
+      <div class="modal-card" role="dialog" aria-label="Account Settings" style="max-width:520px">
+        <div class="modal-head" style="display:flex;align-items:center;justify-content:space-between">
+          <h2 style="margin:0">Change Settings</h2>
+          <button class="icon-btn close" data-close aria-label="Close">✕</button>
+        </div>
+        <div class="modal-body" style="display:grid;gap:10px">
+          <label style="display:flex;flex-direction:column;gap:6px">
+            <span>Display Name</span>
+            <input id="acctSettingsName" type="text" placeholder="Your name"
+                   style="padding:8px 10px;border:1px solid #dcdcdc;border-radius:10px">
+          </label>
+          <div>
+            <label style="display:flex;flex-direction:column;gap:6px">
+              <span>Profile Picture</span>
+              <input id="acctSettingsAvatarFile" type="file" accept="image/*">
+            </label>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button class="btn outline" id="acctSettingsRemovePhoto">Remove Photo</button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-actions" style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+          <button class="btn outline" data-close>Cancel</button>
+          <button class="btn" id="acctSettingsSave">Save</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    // simple open/close helpers
+    function open(){ modal.setAttribute('aria-hidden','false'); }
+    function close(){ modal.setAttribute('aria-hidden','true'); }
+
+    // populate when opened
+    function hydrate(){
+      const sess = getSession() || {};
+      const name = sess.display || deriveName(sess.email||'');
+      byId('acctSettingsName').value = name || '';
+    }
+
+    // open from Account button
+    document.addEventListener('click', (e)=>{
+      const btn = e.target.closest('#acctSettingsBtn');
+      if (!btn) return;
+      hydrate(); open();
+    });
+
+    // close handlers
+    modal.addEventListener('click', (e)=>{
+      if (e.target.matches('[data-close], .modal-backdrop, .icon-btn.close')) close();
+    });
+
+    // read file as data URL
+    function fileToDataURL(file){
+      return new Promise((resolve,reject)=>{
+        const fr = new FileReader();
+        fr.onload = ()=> resolve(fr.result);
+        fr.onerror = reject;
+        fr.readAsDataURL(file);
+      });
+    }
+
+    // remove photo
+    byId('acctSettingsRemovePhoto').addEventListener('click', ()=>{
+      const sess = getSession() || {};
+      delete sess.avatar;
+      setSession(sess);
+      if (typeof window.refreshAuthUI === 'function') window.refreshAuthUI();
+    });
+
+    // save
+    byId('acctSettingsSave').addEventListener('click', async ()=>{
+      const sess = getSession() || {};
+      // name
+      const newName = byId('acctSettingsName').value.trim();
+      if (newName) sess.display = newName;
+
+      // avatar
+      const f = byId('acctSettingsAvatarFile').files?.[0];
+      if (f) {
+        try { sess.avatar = await fileToDataURL(f); }
+        catch {}
+      }
+
+      setSession(sess);
+      if (typeof window.refreshAuthUI === 'function') window.refreshAuthUI();
+      modal.setAttribute('aria-hidden','true');
+      // optional toast
+      try { window.gmToast && window.gmToast('Saved your settings','ok'); } catch {}
+    });
+  }
+
+  // paint avatar into summary if present
+  function applyAvatar(){
+    const img = byId('acctAvatarMini');
+    if (!img) return;
+    const sess = getSession() || {};
+    if (sess.avatar) img.src = sess.avatar;
+    else img.removeAttribute('src'); // keep white circle style
+  }
+
+  /* ---------------- My Submissions: Bulk Actions Bar ---------------- */
+  function ensureBulkBar(){
+    const card = [...document.querySelectorAll('#page-account .account-card')]
+      .find(c => /my submissions/i.test(c.querySelector('h3')?.textContent||''));
+    const list = byId('mySubs');
+    if (!card || !list) return;
+
+    if (!byId('subsBulkBar')){
+      const bar = document.createElement('div');
+      bar.id = 'subsBulkBar';
+      bar.style.cssText = 'display:none;align-items:center;gap:8px;margin:6px 0 8px';
+      bar.innerHTML = `
+        <button class="btn small outline" id="subsSelectAll">Select All</button>
+        <button class="btn small outline" id="subsClearAll">Clear</button>
+        <button class="btn small outline" id="subsCancel">Cancel</button>
+        <button class="btn small danger" id="subsDelete">Delete</button>
+      `;
+      card.insertBefore(bar, list);
+    }
+
+    // ensure each submission has a checkbox
+    function decorateItems(){
+      $$('#mySubs > *').forEach(li=>{
+        if (li.querySelector('input[type="checkbox"]')) return;
+        const box = document.createElement('input');
+        box.type = 'checkbox';
+        box.className = 'ms-check';
+        box.style.marginRight = '8px';
+        // Try to put it at the start
+        li.insertBefore(box, li.firstChild);
+      });
+      updateBar();
+    }
+
+    // show/hide bar based on any checked
+    function updateBar(){
+      const any = $$('#mySubs input[type="checkbox"]:checked').length > 0;
+      byId('subsBulkBar').style.display = any ? 'flex' : 'none';
+    }
+
+    // events
+    byId('subsSelectAll').addEventListener('click', ()=>{
+      $$('#mySubs input[type="checkbox"]').forEach(b=> b.checked = true);
+      updateBar();
+    });
+    byId('subsClearAll').addEventListener('click', ()=>{
+      $$('#mySubs input[type="checkbox"]').forEach(b=> b.checked = false);
+      updateBar();
+    });
+    byId('subsCancel').addEventListener('click', ()=>{
+      $$('#mySubs input[type="checkbox"]').forEach(b=> b.checked = false);
+      updateBar();
+    });
+    byId('subsDelete').addEventListener('click', ()=>{
+      const selected = $$('#mySubs input[type="checkbox"]:checked').map(b=> b.closest('*'));
+      if (!selected.length) return;
+      if (!confirm(`Delete ${selected.length} submission${selected.length>1?'s':''}?`)) return;
+
+      // Try to remove from Approved store first (if available)
+      let storeTouched = false;
+      try{
+        if (typeof getApproved === 'function' && typeof setApproved === 'function'){
+          const cur = getApproved();
+          const slugs = selected.map(card => card?.getAttribute?.('data-slug') || '').filter(Boolean);
+          const next = cur.filter(g => !slugs.includes(g.slug||''));
+          if (next.length !== cur.length){
+            setApproved(next);
+            storeTouched = true;
+          }
+        }
+      }catch{}
+
+      // Remove from DOM regardless
+      selected.forEach(el=> el && el.remove());
+
+      // Hide the bar and maybe toast
+      byId('subsBulkBar').style.display = 'none';
+      try{
+        window.gmToast && window.gmToast(
+          storeTouched ? 'Deleted from library.' : 'Removed from list.',
+          'ok'
+        );
+      }catch{}
+    });
+
+    // React to checking
+    byId('mySubs').addEventListener('change', (e)=>{
+      if (e.target.matches('input[type="checkbox"]')) updateBar();
+    });
+
+    // Decorate now + on future changes
+    decorateItems();
+    new MutationObserver(decorateItems).observe(byId('mySubs'), { childList:true });
+  }
+
+  /* ---------------- Run & hook into auth refresh ---------------- */
+  function run(){
+    ensureSettingsModal();
+    applyAvatar();
+    ensureBulkBar();
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
+  else run();
+
+  const prev = window.refreshAuthUI;
+  window.refreshAuthUI = function(){ try { prev?.(); } catch {} run(); };
+})();
+
