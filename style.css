@@ -124,3 +124,18 @@ a:hover { color: var(--gm-blue-hov) !important; }
 .account-card.pretty button {
   margin-left: auto;
 }
+
+#page-account .btn.settings{
+  background: var(--gm-blue, #026bc7);
+  border-color: var(--gm-blue, #026bc7);
+  color:#fff;
+  border-radius:12px;
+  padding:8px 12px;
+  font-weight:700;
+}
+#page-account .btn.settings:hover{ filter:brightness(.96); }
+
+#page-account .chip{
+  display:inline-block; font-size:11px; padding:4px 10px;
+  border:1px solid #e5e7eb; border-radius:999px; background:#f8fafc; color:#374151;
+}
