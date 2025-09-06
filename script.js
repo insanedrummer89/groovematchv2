@@ -6139,5 +6139,10 @@ window.findByText = window.findByText || function (root, text, {selector='*', ex
 
   const prev = window.refreshAuthUI;
   window.refreshAuthUI = function(){ try{ prev?.(); }catch{} renderAccountPretty(); };
+
+  // Kill the old My Account card if it exists
+document.querySelectorAll('#page-account .account-card').forEach(card=>{
+  if (card.querySelector('#acctDisplay')) card.remove();
+}); 
 })();
 
