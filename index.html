@@ -324,23 +324,18 @@
 
   <!-- Account Page -->
   <section id="page-account" class="page">
-    <div class="account-card" id="acctCard">
+    <div class="account-wrap">
+      <div class="account-card">
   <h3 style="margin:6px 0 8px">My Account</h3>
-
-  <div class="acct-summary">
-    <img id="acctAvatarMini" alt="" />
-    <div class="acct-lines">
-      <div class="acct-name"  id="acctName">Guest</div>
-      <div class="acct-email" id="acctEmailLine"></div>
-    </div>
-    <div style="margin-left:auto">
-      <button class="btn settings" id="acctSettingsBtn">Change Settings</button>
-    </div>
-  </div>
-
-  <div class="gm-byline" id="acctRoleLine"></div>
+  <div id="acctDisplay" class="muted" style="font-weight:600"></div>
+  <div id="acctEmail" class="muted"></div>
+  <div id="acctRole" class="muted"></div>
 </div>
 
+      <div class="account-card">
+        <h3 style="margin:6px 0 8px">My Submissions</h3>
+        <div id="mySubs" class="my-list"></div>
+      </div>
 
       <div class="account-card">
         <h3 style="margin:6px 0 8px">My Submissions</h3>
