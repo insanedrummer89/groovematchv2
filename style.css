@@ -188,3 +188,73 @@ a:hover { color: var(--gm-blue-hov) !important; }
 .acct-sec-title{font-weight:700;font-size:.95rem;margin:8px 0 6px}
 .acct-actions{margin-top:8px}
 .btn.small.outline{background:#fff;border:1px solid currentColor}
+
+
+
+/* ========== ACCOUNT POLISH PACK (scoped) ========== */
+
+/* 1) Fix blue info toast (your brand) */
+.gm-toast.info{
+  background:#026bc7 !important;
+  border-color:#026bc7 !important;
+  color:#fff !important;
+}
+.gm-toast.info .x{ color:#fff !important; }
+
+/* 2) Uniform card widths on Account page
+   (works even if some cards sit outside .account-wrap) */
+#page-account .account-wrap{
+  width:min(1000px,100%);
+  margin:14px auto;
+  display:grid;
+  grid-template-columns:1fr;
+  gap:14px;
+}
+#page-account .account-card{
+  width:min(1000px,100%);
+  margin:0 auto;
+  background:#fff;
+  border:1px solid #e6eaf2;
+  border-radius:16px;
+  box-shadow:0 6px 20px rgba(0,0,0,.06);
+  padding:14px;
+  text-align:left;
+}
+
+/* 3) Account summary layout (old look) */
+.acct-summary{
+  display:flex; align-items:center; gap:12px; margin:8px 0 10px;
+}
+#acctAvatarMini{
+  width:72px; height:72px; border-radius:50%;
+  object-fit:cover; background:#fff; border:1px solid #dcdcdc;
+}
+.acct-lines{ display:flex; flex-direction:column; line-height:1.2; }
+.acct-name{ font-weight:700; }
+.acct-email{ opacity:.8; font-size:.9rem; }
+.gm-byline{ font-size:12px; opacity:.75; margin-top:6px; }
+
+/* 4) Make the Change Settings button match your “Select All” styling */
+#page-account .btn.settings{
+  background:#fff;
+  color:#111;
+  border:1px solid #dcdcdc;
+  border-radius:12px;
+  padding:8px 12px;
+  font-weight:700;
+}
+#page-account .btn.settings:hover{ background:#f8fafc; }
+
+/* 5) Keep chips and bulk buttons tidy */
+#page-account .chip{
+  display:inline-block; font-size:11px; padding:4px 10px;
+  border:1px solid #e5e7eb; border-radius:999px; background:#f8fafc; color:#374151;
+}
+#page-account .btn.small.outline{
+  background:#fff; color:#111; border:1px solid #dcdcdc;
+}
+
+/* 6) Slight consistency for inputs in editor */
+#page-account .input{
+  padding:8px 10px; border:1px solid #dcdcdc; border-radius:10px; font-size:14px;
+}
