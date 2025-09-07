@@ -451,3 +451,28 @@ nav, header nav, .topbar .right, .nav { display:flex; }
   margin-top: 6px;
   line-height: 1.2;
 }
+
+
+
+/* === Fresh Outline Buttons === */
+.btn.outline,
+button.btn.outline,
+a.btn.outline {
+  background:#fff !important;
+  color: var(--gm-blue) !important;
+  border:1px solid var(--gm-blue) !important;
+  transition: all 0.15s ease-in-out;
+}
+.btn.outline:hover,
+button.btn.outline:hover,
+a.btn.outline:hover {
+  background: var(--gm-blue) !important;
+  color:#fff !important;
+  border-color: var(--gm-blue) !important;
+}
+
+:root {
+  --gm-blue: #026bc7;       /* your brand blue */
+  --gm-blue-hov: #025aa6;   /* darker hover */
+  --gm-blue-act: #014e8f;   /* pressed state */
+}
