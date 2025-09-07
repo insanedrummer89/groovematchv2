@@ -6137,4 +6137,51 @@ window.findByText = window.findByText || function (root, text, {selector='*', ex
   }
 })();
 
+/* ===== My Account — minimal restore using legacy IDs ===== */
+(function restoreAccount(){
+  const byId = id => document.getElementById(id);
+  const getSession = () => { try { return JSON.parse(localStorage.getItem('gm_session')||'null'); } catch { return null; } };
+  const setSession = (obj) => localStorage.setItem('gm_session', JSON.stringify(obj||null));
+  const deriveName = (email)=> email ? email.split('@')[0] : 'Guest';
 
+  function paint(){
+    const sess = getSession();
+    const name = sess?.display || deriveName(sess?.email);
+    if (byId('acctDisplay')) byId('acctDisplay').textContent = name || 'Guest';
+    if (byId('acctEmail'))   byId('acctEmail').textContent   = sess?.email || '';
+    if (byId('acctRole'))    byId('acctRole').textContent    = sess?.role ? ('Role: ' + sess.role) : '';
+    // avatar (optional)
+    const img = byId('acctAvatarMini');
+    if (img){
+      if (sess?.avatar) img.src = sess.avatar; else img.removeAttribute('src');
+    }
+    // admin tools toggle
+    const admin = byId('adminTools');
+    if (admin){
+      const isStaff = !!sess && (sess.role==='admin' || sess.role==='mod');
+      admin.style.display = isStaff ? '' : 'none';
+    }
+  }
+
+  // Simple "Change Settings" wiring (prompt for display name)
+  document.addEventListener('click', (e)=>{
+    const btn = e.target.closest('#acctSettingsBtn');
+    if (!btn) return;
+    const sess = getSession() || {};
+    const now  = sess.display || deriveName(sess.email||'');
+    const next = prompt('Display Name', now);
+    if (next != null){
+      sess.display = next.trim() || deriveName(sess.email||'');
+      setSession(sess);
+      if (typeof window.refreshAuthUI === 'function'){ try { window.refreshAuthUI(); } catch {} }
+      paint();
+    }
+  });
+
+  // initial + on auth refresh
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', paint);
+  else paint();
+
+  const prev = window.refreshAuthUI;
+  window.refreshAuthUI = function(){ try { prev?.(); } catch {} paint(); };
+})();
