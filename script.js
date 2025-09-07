@@ -6137,36 +6137,46 @@ window.findByText = window.findByText || function (root, text, {selector='*', ex
   }
 })();
 
-/* ===== My Account — minimal restore using legacy IDs ===== */
-(function restoreAccount(){
-  const byId = id => document.getElementById(id);
-  const getSession = () => { try { return JSON.parse(localStorage.getItem('gm_session')||'null'); } catch { return null; } };
-  const setSession = (obj) => localStorage.setItem('gm_session', JSON.stringify(obj||null));
-  const deriveName = (email)=> email ? email.split('@')[0] : 'Guest';
 
-  function paint(){
-    const sess = getSession();
-    const name = sess?.display || deriveName(sess?.email);
-    if (byId('acctDisplay')) byId('acctDisplay').textContent = name || 'Guest';
-    if (byId('acctEmail'))   byId('acctEmail').textContent   = sess?.email || '';
-    if (byId('acctRole'))    byId('acctRole').textContent    = sess?.role ? ('Role: ' + sess.role) : '';
-    // avatar (optional)
-    const img = byId('acctAvatarMini');
-    if (img){
-      if (sess?.avatar) img.src = sess.avatar; else img.removeAttribute('src');
-    }
-    // admin tools toggle
-    const admin = byId('adminTools');
-    if (admin){
-      const isStaff = !!sess && (sess.role==='admin' || sess.role==='mod');
-      admin.style.display = isStaff ? '' : 'none';
-    }
-  }
 
-  // initial + on auth refresh
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', paint);
-  else paint();
+/* === Toast shim: map to blue info, red danger === */
+(function ensureBlueToast(){
+  // expose for AccountUI's call
+  window.__ensureBlueToast = function(){ /* noop but kept for compatibility */ };
 
-  const prev = window.refreshAuthUI;
-  window.refreshAuthUI = function(){ try { prev?.(); } catch {} paint(); };
+  // normalize a toast function
+  const native = window.gmToast || window.toast;
+  window.toast = function(msg, type='info'){
+    const map = { info:'info', ok:'ok', warn:'warn', err:'danger', error:'danger', danger:'danger' };
+    const sev = map[type] || 'info';
+    try {
+      if (window.gmToast) return window.gmToast(msg, sev);
+      if (native)        return native(msg, sev);
+      console.log(`[toast:${sev}]`, msg);
+    } catch(e) { console.log('[toast]', msg); }
+  };
 })();
+
+
+
+
+/* === Keep one Change Settings button (the AccountUI one) === */
+(function dedupeChangeSettings(){
+  function run(){
+    const all = [...document.querySelectorAll('button, .btn')].filter(
+      b => /change settings/i.test((b.textContent||'').trim())
+    );
+    if (!all.length) return;
+
+    // Prefer the one inside the first My Account card
+    const keep = all.find(b => b.closest('#page-account .account-card')) || all[0];
+    all.forEach(b => { if (b !== keep) b.remove(); });
+  }
+  (document.readyState === 'loading') ? document.addEventListener('DOMContentLoaded', run) : run();
+
+  // re-run if your auth UI rebuilds the header/nav
+  const prev = window.refreshAuthUI;
+  window.refreshAuthUI = function(){ try{ prev?.(); }catch{} run(); };
+})();
+
+
