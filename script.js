@@ -4751,10 +4751,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     btnCancel.className = 'btn small';
     btnCancel.textContent = 'Cancel';
     btnCancel.style.display = 'none';
-    // style + place Cancel on the LEFT
-    btnCancel.style.background = '#000';
-    btnCancel.style.color = '#fff';
-    btnCancel.style.borderColor = '#000';
+   
 
     const spacer = document.createElement('span');
     spacer.style.flex = '1';
@@ -4766,7 +4763,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
     // Cancel | spacer | Select/Clear/Delete (right group)
     // NEW (everything on the right; spacer sits on the left)
-    bar.append(spacer, btnSelect, btnClear, btnCancel, btnDelete);
+    bar.append(spacer, btnSelect, btnCancel, btnClear, btnDelete);
 
     h.parentNode.insertBefore(bar, h);
 
