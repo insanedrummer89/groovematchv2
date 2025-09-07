@@ -6178,8 +6178,9 @@ window.findByText = window.findByText || function (root, text, {selector='*', ex
 })();
 
 
-/* ========== Toast shim: route "info" to blue, errors to red ========== */
-(function ensureBrandToast(){
+
+/* Route toast "info" -> blue; "err"/"error" -> danger */
+(function(){
   const native = window.gmToast || window.toast;
   window.toast = function(msg, type='info'){
     const map = { info:'info', ok:'ok', warn:'warn', err:'danger', error:'danger', danger:'danger' };
@@ -6188,9 +6189,6 @@ window.findByText = window.findByText || function (root, text, {selector='*', ex
       if (window.gmToast) return window.gmToast(msg, sev);
       if (native)        return native(msg, sev);
       console.log(`[toast:${sev}]`, msg);
-    } catch(e){
-      console.log('[toast]', msg);
-    }
+    } catch(e){ console.log('[toast]', msg); }
   };
 })();
-
