@@ -476,3 +476,78 @@ a.btn.outline:hover {
   --gm-blue-hov: #025aa6;   /* darker hover */
   --gm-blue-act: #014e8f;   /* pressed state */
 }
+
+/* ===== GROOVEMATCH BRAND + BUTTONS + ACCOUNT (force overrides) ===== */
+
+/* 1) Brand vars: CodePen used --blue. Mirror it + your gm vars. */
+:root{
+  --blue:#026bc7 !important;      /* brand blue used by .btn in the Pen */
+  --blue-100:#e6efff;             /* light tint for focus/playing */
+  --gm-blue:#026bc7 !important;   /* for any gm-* rules */
+  --gm-blue-hov:#025aa6 !important;
+  --gm-blue-act:#014e8f !important;
+}
+
+/* 2) Buttons — match Pen + your “fresh” outline hover flip */
+.btn{ background:var(--blue) !important; color:#fff !important; border:none; }
+.btn.secondary{ background:#111 !important; color:#fff !important; }
+.btn.small{ padding:8px 10px; }
+.btn.outline{
+  background:#fff !important;
+  color:var(--blue) !important;
+  border:1px solid var(--blue) !important;
+  transition: all .15s ease-in-out;
+}
+.btn.outline:hover{
+  background:var(--blue) !important;
+  color:#fff !important;
+  border-color:var(--blue) !important;
+}
+
+/* 3) Info toast = brand blue (success stays green; danger stays red elsewhere) */
+.gm-toast.info{
+  background:var(--blue) !important;
+  border-color:var(--blue) !important;
+  color:#fff !important;
+}
+.gm-toast.info .x{ color:#fff !important; }
+
+/* 4) “Playing” outline in grid uses the same brand */
+.row .cell.playing{ outline:2px solid var(--blue) !important; background:var(--blue-100) !important; }
+
+/* 5) Account page — make all cards same width + classic summary layout */
+#page-account .account-wrap{
+  width:min(1000px,100%) !important;
+  margin:14px auto !important;
+  display:grid !important;
+  grid-template-columns:1fr !important;
+  gap:14px !important;
+}
+#page-account .account-card{
+  width:100% !important;
+  margin:0 auto !important;
+  background:#fff !important;
+  border:1px solid #e6eaf2 !important;
+  border-radius:16px !important;
+  box-shadow:0 6px 20px rgba(0,0,0,.06) !important;
+  padding:14px !important;
+  text-align:left !important;
+}
+/* summary row (avatar left, text column, button on right) */
+.acct-summary{ display:flex !important; align-items:center !important; gap:12px !important; margin:8px 0 10px !important; }
+#acctAvatarMini{
+  width:72px !important; height:72px !important; border-radius:50% !important;
+  object-fit:cover !important; background:#fff !important; border:1px solid #dcdcdc !important;
+}
+.acct-lines{ display:flex !important; flex-direction:column !important; line-height:1.2 !important; }
+.acct-name{ font-weight:700 !important; }
+.acct-email{ opacity:.8 !important; font-size:.9rem !important; }
+.gm-byline{ font-size:12px !important; opacity:.75 !important; margin-top:6px !important; }
+
+/* “Change Settings” button = outline family (like your Select All) */
+#page-account .btn.settings{
+  background:#fff !important; color:#111 !important; border:1px solid #dcdcdc !important; border-radius:12px !important; padding:8px 12px !important; font-weight:700 !important;
+}
+#page-account .btn.settings:hover{
+  background:var(--blue) !important; color:#fff !important; border-color:var(--blue) !important;
+}
