@@ -6163,21 +6163,6 @@ window.findByText = window.findByText || function (root, text, {selector='*', ex
     }
   }
 
-  // Simple "Change Settings" wiring (prompt for display name)
-  document.addEventListener('click', (e)=>{
-    const btn = e.target.closest('#acctSettingsBtn');
-    if (!btn) return;
-    const sess = getSession() || {};
-    const now  = sess.display || deriveName(sess.email||'');
-    const next = prompt('Display Name', now);
-    if (next != null){
-      sess.display = next.trim() || deriveName(sess.email||'');
-      setSession(sess);
-      if (typeof window.refreshAuthUI === 'function'){ try { window.refreshAuthUI(); } catch {} }
-      paint();
-    }
-  });
-
   // initial + on auth refresh
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', paint);
   else paint();
