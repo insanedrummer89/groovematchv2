@@ -4760,7 +4760,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
     btnDelete.className = 'btn small danger';
     btnDelete.textContent = 'Delete';
     btnDelete.style.display = 'none';
-
+    btnDelete.className = 'btn small black'; 
+    
     // Cancel | spacer | Select/Clear/Delete (right group)
     // NEW (everything on the right; spacer sits on the left)
     bar.append(spacer, btnSelect, btnCancel, btnClear, btnDelete);
