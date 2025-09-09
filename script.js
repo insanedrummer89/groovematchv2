@@ -6192,3 +6192,264 @@ window.findByText = window.findByText || function (root, text, {selector='*', ex
     } catch(e){ console.log('[toast]', msg); }
   };
 })();
+
+
+
+
+
+
+  /* =============== tiny toast (if you don't already have one) =============== */
+  if (!window.toast) {
+    const host = document.createElement('div');
+    Object.assign(host.style,{position:'fixed',right:'14px',bottom:'14px',zIndex:9999,display:'grid',gap:'8px'});
+    document.body.appendChild(host);
+    const live=new Set();
+    window.toast=(msg,type='ok',ms=2000)=>{
+      const key=type+msg; if(live.has(key)) return; live.add(key);
+      const el=document.createElement('div');
+      el.textContent=msg;
+      Object.assign(el.style,{
+        background:type==='err'?'#ffe8e8':'#eef6ff',
+        border:'1px solid #cfe0ff',borderRadius:'10px',padding:'10px 12px',maxWidth:'360px',
+        boxShadow:'0 2px 10px rgba(0,0,0,.08)',color:'#111',fontSize:'14px'
+      });
+      host.appendChild(el); setTimeout(()=>{el.remove(); live.delete(key)},ms);
+    };
+  }
+
+  const getUser = () => {
+    try { return JSON.parse(localStorage.getItem('gm_user')||'null'); } catch { return null; }
+  };
+
+  /* ====================== ACCOUNT HEADER SYNC ====================== */
+  function syncAccountHeader(){
+    const u = getUser();
+    const nameEl = document.getElementById('acctDisplay');
+    const mailEl = document.getElementById('acctEmail');
+    const roleEl = document.getElementById('acctRole');
+    if (!u) return;
+    nameEl && (nameEl.textContent = u.displayName || u.email?.split('@')[0] || 'User');
+    mailEl && (mailEl.textContent = u.email || '');
+    if (roleEl) {
+      const admins = new Set(JSON.parse(localStorage.getItem('gm_admins')||'[]'));
+      roleEl.textContent = admins.has(u.email) ? 'Role: Admin' : 'Role: Member';
+    }
+  }
+
+  /* ====================== MY SUBMISSIONS UX ====================== */
+  const mySubsBox = document.getElementById('mySubs');
+
+  // create an action bar if your script didn't render one
+  function ensureMySubsToolbar(){
+    if (!mySubsBox) return;
+    if (document.getElementById('mySubsToolbar')) return;
+    const wrap = mySubsBox.closest('.account-card');
+    if (!wrap) return;
+    const bar = document.createElement('div');
+    bar.id = 'mySubsToolbar';
+    bar.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;align-items:center;margin-bottom:8px;';
+    bar.innerHTML = `
+      <button id="mySubsSelectAll" class="icon-btn">Select All</button>
+      <button id="mySubsCancel" class="icon-btn" style="display:none">Cancel</button>
+      <button id="mySubsClear" class="icon-btn" style="display:none">Clear</button>
+      <button id="mySubsDelete" class="btn small" disabled>Delete</button>
+    `;
+    wrap.insertBefore(bar, mySubsBox);
+  }
+
+  function mySubsRows(){
+    return [...(mySubsBox?.querySelectorAll('[data-row], .sub-row, .row')||[])];
+  }
+
+  function dedupeMySubs(){
+    const seen = new Set();
+    mySubsRows().forEach(r=>{
+      const slug = r.dataset.slug || '';
+      const t = (r.querySelector('.title,[data-title]')?.textContent||'').trim().toLowerCase();
+      const a = (r.querySelector('.artist,[data-artist]')?.textContent||'').trim().toLowerCase();
+      const sig = (r.querySelector('.sig,[data-sig]')?.textContent||'').trim();
+      const bpm = (r.querySelector('.bpm,[data-bpm]')?.textContent||'').trim();
+      const typ = (r.dataset.type||'').toLowerCase() || (/pattern/i.test(r.textContent)?'pattern':'song');
+      const key = slug || `${typ}__${t}__${a}__${sig}__${bpm}`;
+      if (seen.has(key)) r.remove(); else seen.add(key);
+    });
+  }
+
+  function enlargeCheckboxHit(){
+    mySubsRows().forEach(r=>{
+      let cb = r.querySelector('input[type="checkbox"]');
+      if (!cb) {
+        cb = document.createElement('input');
+        cb.type='checkbox'; cb.style.marginRight='8px';
+        r.insertBefore(cb, r.firstChild);
+      }
+      if (!cb.__gmStop){
+        cb.__gmStop = true;
+        cb.addEventListener('click', e=> e.stopPropagation());
+      }
+      if (!r.__gmToggle){
+        r.__gmToggle = true;
+        r.addEventListener('click', e=>{
+          if (e.target.closest('button,a,[role="button"]')) return;
+          cb.checked = !cb.checked; updateMySubsButtons();
+        });
+      }
+    });
+  }
+
+  function anyChecked(){ return !!(mySubsBox && mySubsBox.querySelector('input[type="checkbox"]:checked')); }
+
+  function updateMySubsButtons(){
+    const btnDel = document.getElementById('mySubsDelete');
+    const btnCancel = document.getElementById('mySubsCancel');
+    const btnClear = document.getElementById('mySubsClear');
+    const has = anyChecked();
+    if (btnDel) btnDel.disabled = !has;
+    if (btnCancel) btnCancel.style.display = has ? '' : 'none';
+    if (btnClear)  btnClear.style.display  = has ? '' : 'none';
+  }
+
+  function bindMySubsToolbar(){
+    const btnSel = document.getElementById('mySubsSelectAll');
+    const btnCancel = document.getElementById('mySubsCancel');
+    const btnClear = document.getElementById('mySubsClear');
+    const btnDel = document.getElementById('mySubsDelete');
+
+    btnSel?.addEventListener('click', ()=>{
+      mySubsRows().forEach(r=> r.querySelector('input[type="checkbox"]').checked = true);
+      updateMySubsButtons();
+    });
+    btnCancel?.addEventListener('click', ()=>{
+      mySubsRows().forEach(r=> r.querySelector('input[type="checkbox"]').checked = false);
+      updateMySubsButtons();
+    });
+    btnClear?.addEventListener('click', ()=>{
+      mySubsRows().forEach(r=> r.querySelector('input[type="checkbox"]').checked = false);
+      updateMySubsButtons();
+      toast('Selection cleared.','ok');
+    });
+    btnDel?.addEventListener('click', ()=>{
+      const chosen = mySubsRows().filter(r=> r.querySelector('input[type="checkbox"]').checked);
+      if (!chosen.length) { toast('Nothing selected.','err'); return; }
+      if (!confirm(`Delete ${chosen.length} from your list? This removes them from YOUR list (not the public library).`)) return;
+      chosen.forEach(r=> r.remove());
+      updateMySubsButtons();
+      toast('Deleted.','ok');
+    });
+
+    // Also react to manual cb changes
+    mySubsBox?.addEventListener('change', e=>{
+      if (e.target.matches('input[type="checkbox"]')) updateMySubsButtons();
+    });
+  }
+
+  /* ====================== ADMIN TOOLS (demo) ====================== */
+  function bindAdminTools(){
+    const email = document.getElementById('newAdminEmail');
+    const promote = document.getElementById('promoteBtn');
+    const demote = document.getElementById('demoteBtn');
+    const okEmail = v=> /\S+@\S+\.\S+/.test(v||'');
+
+    function setAdmins(updater){
+      try{
+        const s = new Set(JSON.parse(localStorage.getItem('gm_admins')||'[]'));
+        updater(s);
+        localStorage.setItem('gm_admins', JSON.stringify([...s]));
+        syncAccountHeader();
+        return true;
+      }catch{ return false; }
+    }
+
+    promote?.addEventListener('click', ()=>{
+      const v = email?.value||''; if(!okEmail(v)) return toast('Enter a valid email.','err');
+      const ok = setAdmins(s=> s.add(v));
+      toast(ok?'User promoted.':'Promote failed.', ok?'ok':'err');
+    });
+    demote?.addEventListener('click', ()=>{
+      const v = email?.value||''; if(!okEmail(v)) return toast('Enter a valid email.','err');
+      const ok = setAdmins(s=> s.delete(v));
+      toast(ok?'User demoted.':'Demote failed.', ok?'ok':'err');
+    });
+  }
+
+  /* ====================== PENDING GROOVES ====================== */
+  function bindPending(){
+    const list = document.getElementById('adminList');
+    const recent = document.getElementById('approvedCache');
+    const btnApprove = document.getElementById('admApprove');
+    const btnReject  = document.getElementById('admReject');
+
+    const detailInputs = [
+      'admType','admTitle','admArtist','admDrummer','admGenre','admSig','admTempo'
+    ].map(id=> document.getElementById(id));
+
+    function clearReviewPane(){
+      detailInputs.forEach(el=>{ if(!el) return; if(el.tagName==='SELECT') el.selectedIndex=0; else el.value=''; });
+      // wipe grid dots if your admin grid renders classes
+      document.querySelectorAll('#admSystem .cell.on, #admSystem .cell.accent, #admSystem .cell.kick, #admSystem .cell.snare, #admSystem .cell.ghost, #admSystem .cell.open-hh')
+        .forEach(c=> c.classList.remove('on','accent','kick','snare','ghost','open-hh'));
+    }
+
+    function selectedItem(){
+      return list?.querySelector('[data-item].selected, .admin-item.selected') || null;
+    }
+
+    list?.addEventListener('click', e=>{
+      const item = e.target.closest('[data-item], .admin-item'); if(!item) return;
+      list.querySelectorAll('[data-item].selected, .admin-item.selected').forEach(n=> n.classList.remove('selected'));
+      item.classList.add('selected');
+    });
+
+    function addRecent(item){
+      if (!recent || !item) return;
+      const title = item.querySelector('.t, .title')?.textContent?.trim() || 'Untitled';
+      const sub = item.querySelector('.sub')?.textContent?.trim() || '';
+      const key = `${title}__${sub}`;
+      if ([...recent.children].some(n=> n.dataset?.key === key)) return;
+      const div = document.createElement('div');
+      div.className='approved-item'; div.dataset.key=key;
+      div.textContent = `${title} — ${sub}`;
+      recent.prepend(div);
+    }
+
+    btnApprove?.addEventListener('click', ()=>{
+      const sel = selectedItem();
+      if (!sel) return toast('Select a submission first.','err');
+      addRecent(sel);
+      sel.remove();
+      clearReviewPane();
+      toast('Approved','ok');
+    });
+
+    btnReject?.addEventListener('click', ()=>{
+      const sel = selectedItem();
+      if (!sel) return toast('Select a submission first.','err');
+      if (!confirm('Reject this submission?')) return;
+      sel.remove();
+      clearReviewPane();
+      toast('Rejected','ok');
+    });
+  }
+
+  /* ====================== INIT + OBSERVER ====================== */
+  function init(){
+    syncAccountHeader();
+    ensureMySubsToolbar();
+    dedupeMySubs();
+    enlargeCheckboxHit();
+    updateMySubsButtons();
+    bindMySubsToolbar();
+    bindAdminTools();
+    bindPending();
+  }
+  // run after main app populates DOM
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+  // re-run if your app swaps pages/content dynamically
+  const mo = new MutationObserver(()=> init());
+  mo.observe(document.body, {childList:true, subtree:true});
+})();
+
