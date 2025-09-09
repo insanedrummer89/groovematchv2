@@ -191,3 +191,27 @@
 .gm-app nav, .gm-app header nav, .gm-app .topbar .right, .gm-app .nav { display:flex; }
 .gm-app #navAccount { order:0 !important; }
 .gm-app #navLogout  { order:1 !important; }
+
+
+
+/* === Final button/tabs polish (overrides) === */
+.gm-app button,
+.gm-app .btn{
+  display:inline-flex; align-items:center; gap:.5rem;
+  padding:.55rem .9rem; line-height:1; font-weight:700;
+  border-radius:999px; border:1px solid var(--blue);
+  background:#fff; color:var(--blue);
+  cursor:pointer; transition:all .15s ease-in-out;
+}
+.gm-app button:hover,
+.gm-app .btn:hover{
+  background:var(--blue); color:#fff; border-color:var(--blue);
+}
+
+/* Pills for All/Songs/Patterns (when JS renders them) */
+.gm-app .tabs{display:flex; gap:.5rem}
+.gm-app .tabs .pill{
+  padding:.45rem .8rem; border-radius:999px;
+  border:1px solid var(--line); background:#fff; font-weight:700; color:#444;
+}
+.gm-app .tabs .pill.active{ background:var(--blue); color:#fff; border-color:var(--blue); }
