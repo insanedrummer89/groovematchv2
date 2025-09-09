@@ -4740,7 +4740,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
     const btnSelect = document.createElement('button');
     btnSelect.className = 'btn small';
-    btnSelect.textContent = 'Select All';
+    btnSelect.textContent = 'Select';
 
     const btnClear = document.createElement('button');
     btnClear.className = 'btn small outline';
