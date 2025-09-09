@@ -551,3 +551,95 @@ a.btn.outline:hover {
 #page-account .btn.settings:hover{
   background:var(--blue) !important; color:#fff !important; border-color:var(--blue) !important;
 }
+
+
+
+
+/* ====== GROOVEMATCH FINAL OVERRIDES (paste LAST) ====== */
+
+/* 0) Scope bump (add class="gm-app" on <body>) to outrank generic site CSS */
+.gm-app { all: revert-layer; /* keeps normal UA defaults while letting our styles win */ }
+
+/* 1) Variables — single source of truth */
+:root{
+  --blue:#026bc7;
+  --blue-100:#e6efff;
+  --text:#222;
+  --line:#dcdcdc;
+  --card:#fff;
+  --shadow:0 6px 20px rgba(0,0,0,.06);
+}
+
+/* 2) Base font + body */
+body{ font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--text); }
+
+/* 3) Buttons — also catch plain <button> */
+button, .btn{
+  display:inline-flex; align-items:center; gap:.5rem;
+  padding:.55rem .9rem; border-radius:999px; line-height:1;
+  font-weight:700; letter-spacing:.2px; cursor:pointer;
+  border:1px solid var(--blue); background:#fff; color:var(--blue);
+  transition:all .15s ease-in-out;
+}
+button:hover, .btn:hover{ background:var(--blue); color:#fff; border-color:var(--blue); }
+
+/* primary variant */
+.btn.primary, button.primary, a.btn.primary{
+  background:var(--blue); color:#fff; border-color:var(--blue);
+}
+.btn.primary:hover, button.primary:hover, a.btn.primary:hover{
+  background:#025aa6; border-color:#025aa6;
+}
+
+/* outline variant (your “fresh flip”) */
+.btn.outline, button.outline, a.btn.outline{
+  background:#fff; color:var(--blue); border:1px solid var(--blue);
+}
+.btn.outline:hover, button.outline:hover, a.btn.outline:hover{
+  background:var(--blue); color:#fff; border-color:var(--blue);
+}
+
+/* Make sure key actions are blue even if no .primary class was set */
+#submitBtn, [data-role="submit-groove"], [data-action="play"],
+#results [data-loadslug], #results [data-action="load"],
+#libraryResults [data-loadslug], #libraryResults [data-action="load"]{
+  background:var(--blue); color:#fff; border-color:var(--blue);
+}
+#submitBtn:hover, [data-role="submit-groove"]:hover, [data-action="play"]:hover,
+#results [data-loadslug]:hover, #results [data-action="load"]:hover,
+#libraryResults [data-loadslug]:hover, #libraryResults [data-action="load"]:hover{
+  background:#025aa6; border-color:#025aa6;
+}
+
+/* 4) Pills for “All / Songs / Patterns” (what’s missing live) */
+.tabs{ display:flex; gap:.5rem; }
+.tabs .pill{
+  padding:.45rem .8rem; border-radius:999px;
+  background:#fff; color:#444; border:1px solid var(--line); font-weight:700;
+}
+.tabs .pill.active{ background:var(--blue); color:#fff; border-color:var(--blue); }
+
+/* If your markup uses .mycat-toolbar .chip, keep it visually identical */
+.mycat-toolbar .chip{ padding:.45rem .8rem; border-radius:999px; border:1px solid var(--line); background:#fff; font-weight:700; }
+.mycat-toolbar .chip.active{ background:var(--blue); color:#fff; border-color:var(--blue); }
+
+/* 5) Account card & avatar (single, consistent version) */
+.acct-summary{ display:flex; align-items:center; gap:12px; }
+#acctAvatarMini, #acctAvatar{
+  width:72px; height:72px; border-radius:50%;
+  object-fit:cover; background:#fff; border:1px solid #dcdcdc;
+}
+.acct-name{ font-weight:700; }
+.acct-email{ opacity:.8; font-size:.9rem; }
+
+/* 6) Toast color match */
+.gm-toast.info{ background:var(--blue); }
+.gm-toast.ok{ background:#16a34a; }
+.gm-toast.warn{ background:#f59e0b; }
+.gm-toast.danger{ background:#ef4444; }
+
+/* 7) Focus ring in brand */
+button:focus, .btn:focus, input:focus, select:focus, textarea:focus{
+  outline-color:var(--blue); box-shadow:0 0 0 2px rgba(2,107,199,.35);
+}
+
